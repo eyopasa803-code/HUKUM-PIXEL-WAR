@@ -2,83 +2,83 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>HÜKÜM - Devasa Pixel War Karargahı</title>
+    <title>HÜKÜM Pixel War</title>
     <style>
-        body { background: #0b0b0b; color: #fff; font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 10px; }
-        .panel { background: #181818; padding: 15px; margin: 10px auto; width: 95%; max-width: 500px; border-radius: 8px; border: 1px solid #333; box-sizing: border-box; }
-        input, select, button { padding: 10px; margin: 6px 0; width: 100%; box-sizing: border-box; border-radius: 5px; border: none; background: #252525; color: #fff; font-size: 14px; }
-        button { background: #8b0000; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        button:hover { background: #a52a2a; }
-        #canvas-container { width: 100%; overflow: auto; background: #111; border: 2px solid #444; border-radius: 5px; margin-top: 15px; }
-        #grid { display: grid; grid-template-columns: repeat(50, 16px); gap: 1px; width: max-content; margin: 0 auto; background: #222; }
-        .pixel { width: 16px; height: 16px; background: #1a1a1a; cursor: pointer; background-size: cover; background-position: center; border: 0.5px solid #222; }
-        .badge { background: #333; padding: 3px 8px; border-radius: 4px; font-size: 12px; color: #ffcc00; }
-        .flex-box { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; background: #ffffff; color: #111; font-family: sans-serif; overflow: hidden; }
+        
+        /* Tam Ekran Harita */
+        #canvas-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(100, 15px); grid-template-rows: repeat(100, 15px); background: #f0f0f0; }
+        .pixel { width: 15px; height: 15px; background: #ffffff; border: 0.5px solid #e0e0e0; cursor: pointer; background-size: cover; background-position: center; }
+
+        /* Arayüz Pencereleri */
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.95); border: 2px solid #333; padding: 20px; border-radius: 8px; z-index: 100; width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: #fff; color: #000; }
+        button { background: #b22222; color: #fff; font-weight: bold; cursor: pointer; border: none; }
+        button:hover { background: #8b0000; }
+
+        /* Üst Bilgi Barı */
+        #top-bar { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 12px; border-radius: 5px; font-size: 12px; z-index: 50; display: none; }
+        
+        /* Paşa Paneli */
+        #commander-modal { display: none; width: 380px; max-height: 80vh; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-    <h2 style="color: #ff3333; margin-bottom: 2px;">HÜKÜM CUMHURİYET ORDUSU</h2>
-    <p style="font-size: 12px; color: #888;">Devasa r/place Tarzı Piksel Savaş Alanı</p>
+    <!-- DEAVASA TAM EKRAN HARİTA -->
+    <div id="canvas-area"></div>
 
-    <!-- GİRİŞ -->
-    <div id="auth-panel" class="panel">
-        <h3>Askeri Kimlik</h3>
-        <input type="text" id="username" placeholder="Kullanıcı Adınız">
-        <button onclick="loginUser()">Sisteme Giriş Yap</button>
+    <!-- ÜST BİLGİ -->
+    <div id="top-bar">
+        Asker: <b id="lbl-user" style="color:#00ffcc;"></b> | Ordun: <b id="lbl-army" style="color:#ffcc00;">Yok</b> | Rütbe: <b id="lbl-rank" style="color:#ff5555;">Er</b>
     </div>
 
-    <!-- OYUN -->
-    <div id="game-panel" style="display:none;">
-        <div class="panel" style="max-width: 900px; width: 95%;">
-            <p>Asker: <b id="lbl-user" style="color:#00ffcc;"></b> | Ordun: <b id="lbl-army" style="color:#ff9900;">Yok</b> | Rütben: <span id="lbl-rank" class="badge">Er</span></p>
-        </div>
+    <!-- GİRİŞ PENCERESİ -->
+    <div id="auth-modal" class="modal">
+        <h3>Askeri Kimlik</h3>
+        <input type="text" id="username" placeholder="Kullanıcı Adınız">
+        <button onclick="loginUser()">Karargaha Gir</button>
+    </div>
 
-        <div class="flex-box">
-            <!-- ORDU KURMA -->
-            <div class="panel" id="army-create-panel">
-                <h3>Kendi Ordunu Kur</h3>
-                <input type="text" id="army-name" placeholder="Ordu İsmi">
-                <label style="font-size:12px; color:#aaa; display:block; text-align:left;">Ordu Logosu (Galeriden Seç):</label>
-                <input type="file" id="army-logo-file" accept="image/*">
-                <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
-            </div>
-
-            <!-- ORDU LİSTESİ -->
-            <div class="panel" id="army-list-panel">
-                <h3>Aktif Ordular</h3>
-                <div id="armies-container" style="max-height: 160px; overflow-y: auto;"></div>
-            </div>
+    <!-- ORDU SEÇME / KURMA PENCERESİ -->
+    <div id="lobby-modal" class="modal" style="display:none;">
+        <h3>Ordu Seç veya Kur</h3>
+        <div id="army-create-box">
+            <input type="text" id="army-name" placeholder="Ordu İsmi">
+            <label style="font-size:11px; text-align:left; display:block; color:#555;">Ordu Logosu (Galeriden Seç):</label>
+            <input type="file" id="army-logo-file" accept="image/*">
+            <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
         </div>
+        <hr style="margin: 10px 0;">
+        <div id="armies-container" style="max-height: 120px; overflow-y: auto;"></div>
+    </div>
 
-        <!-- PAŞA KOMUTA PANELİ -->
-        <div class="panel" id="commander-panel" style="display:none; max-width: 900px; width: 95%; border-color: #ffcc00;">
-            <h3 style="color: #ffcc00;">Genelkurmay / Paşa Komuta Masası</h3>
-            <div id="member-management" style="font-size: 13px; text-align: left; margin-bottom: 10px;"></div>
-            <hr style="border-color: #444;">
-            <h4>Diplomasi (Savaş, Barış, İttifak)</h4>
-            <select id="target-army-select"></select>
-            <select id="diplomacy-action">
-                <option value="savas">Savaş Aç</option>
-                <option value="baris">Barış İmzala</option>
-                <option value="ittifak">İttifak Ol</option>
-            </select>
-            <button onclick="sendDiplomacy()" style="background: #b8860b;">Diplomatik Talep Gönder</button>
-            <div id="diplomacy-status" style="font-size:12px; margin-top:5px; color:#aaa;"></div>
-        </div>
+    <!-- PAŞA KOMUTA PANELİ -->
+    <div id="commander-modal" class="modal">
+        <h3 style="color: #b22222;">Genelkurmay / Paşa Paneli</h3>
+        <div id="member-management" style="text-align: left; font-size: 12px; margin-bottom: 10px;"></div>
+        <hr>
+        <h4>Diplomasi (Savaş / Barış / İttifak)</h4>
+        <select id="target-army-select"></select>
+        <select id="diplomacy-action">
+            <option value="savas">Savaş Aç</option>
+            <option value="baris">Barış İmzala</option>
+            <option value="ittifak">İttifak Ol</option>
+        </select>
+        <button onclick="sendDiplomacy()">Diplomatik İşlem Yap</button>
+        <button onclick="document.getElementById('commander-modal').style.display='none'" style="background:#555; margin-top:5px;">Paneli Kapat</button>
+    </div>
 
-        <!-- DEAVASA HARİTA -->
-        <div class="panel" style="max-width: 900px; width: 95%;">
-            <h3>Devasa Cephe Haritası (50x50 Piksel)</h3>
-            <p style="font-size: 11px; color: #aaa;">Her saniye düşman hatlarına 1 toprak/piksel koyabilirsin!</p>
-            <div id="canvas-container">
-                <div id="grid"></div>
-            </div>
-        </div>
+    <!-- DİPLOMASİ / ORDU TIKLAMA PENCERESİ -->
+    <div id="diplomacy-modal" class="modal" style="display:none;">
+        <h3 id="target-army-title">Ordu Detayı</h3>
+        <p id="target-army-info" style="font-size:13px; margin:10px 0;"></p>
+        <button onclick="closeDiplomacy()" style="background:#555;">Kapat</button>
     </div>
 
     <script>
-        const GRID_SIZE = 50; // Devasa harita boyutu
+        const GRID_SIZE = 100;
         let currentUser = localStorage.getItem('hukuk_user') || null;
         let usersData = JSON.parse(localStorage.getItem('hukuk_users')) || {};
         let armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || {};
@@ -88,18 +88,34 @@
         const highRanks = ["Tuğgeneral", "Tümgeneral", "Korgeneral", "Orgeneral", "Genelkurmay Başkanı", "Mareşal"];
 
         window.onload = function() {
+            buildGrid();
             if(currentUser && usersData[currentUser]) {
                 document.getElementById('username').value = currentUser;
                 loginUser();
             }
-            initMap();
-            updateUI();
-            setInterval(autoSyncData, 1000); // Her saniye otomatik güncelleme
+            setInterval(autoSync, 1000);
         };
+
+        function buildGrid() {
+            const area = document.getElementById('canvas-area');
+            area.innerHTML = '';
+            for(let x=0; x<GRID_SIZE; x++) {
+                for(let y=0; y<GRID_SIZE; y++) {
+                    const key = `${x},${y}`;
+                    const div = document.createElement('div');
+                    div.className = 'pixel';
+                    if(mapData[key]) {
+                        div.style.backgroundImage = `url(${mapData[key].logo})`;
+                    }
+                    div.onclick = () => handlePixelClick(key);
+                    area.appendChild(div);
+                }
+            }
+        }
 
         function loginUser() {
             const name = document.getElementById('username').value.trim();
-            if(!name) return alert("Askeri adını yaz!");
+            if(!name) return alert("Adını yaz!");
             currentUser = name;
             localStorage.setItem('hukuk_user', currentUser);
 
@@ -107,174 +123,142 @@
                 usersData[currentUser] = { army: null, rank: "Er" };
             }
 
-            document.getElementById('lbl-user').innerText = currentUser;
-            document.getElementById('auth-panel').style.display = 'none';
-            document.getElementById('game-panel').style.display = 'block';
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('top-bar').style.display = 'block';
+            
+            if(!usersData[currentUser].army) {
+                document.getElementById('lobby-modal').style.display = 'block';
+            }
             updateUI();
         }
 
         function createArmy() {
-            const armyName = document.getElementById('army-name').value.trim();
+            const name = document.getElementById('army-name').value.trim();
             const fileInput = document.getElementById('army-logo-file');
-            if(!armyName || fileInput.files.length === 0) return alert("Ordu ismi ve galeriden logo seçmelisin!");
-            if(armiesData[armyName]) return alert("Bu isimde bir ordu zaten var!");
+            if(!name || fileInput.files.length === 0) return alert("İsim ve logo seç!");
+            if(armiesData[name]) return alert("Bu ordu zaten var!");
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const logoBase64 = e.target.result;
-                
-                armiesData[armyName] = {
-                    name: armyName,
-                    logo: logoBase64,
-                    marshal: currentUser,
-                    diplomacy: {}
-                };
+                const logo = e.target.result;
+                armiesData[name] = { name: name, logo: logo, marshal: currentUser, diplomacy: {} };
+                usersData[currentUser].army = name;
+                usersData[currentUser].rank = "Mareşal";
 
-                usersData[currentUser].army = armyName;
-                usersData[currentUser].rank = "Mareşal"; // Kurucu doğrudan Mareşal
-
-                // Haritada merkezde ilk toprak parçasını ver
-                let centerKey = `${Math.floor(GRID_SIZE/2)},${Math.floor(GRID_SIZE/2)}`;
-                mapData[centerKey] = { army: armyName, logo: logoBase64 };
+                let center = `${Math.floor(GRID_SIZE/2)},${Math.floor(GRID_SIZE/2)}`;
+                mapData[center] = { army: name, logo: logo };
 
                 saveAndRefresh();
+                document.getElementById('lobby-modal').style.display = 'none';
                 alert("Ordu kuruldu, Başkomutan sensin!");
             };
             reader.readAsDataURL(fileInput.files[0]);
         }
 
-        function joinArmy(armyName) {
-            if(usersData[currentUser].army !== null) {
-                return alert("Zaten bir ordudasın! Sadece ihraç yersen çıkabilirsin.");
+        function joinArmy(name) {
+            if(usersData[currentUser].army) return alert("Zaten ordudasın!");
+            usersData[currentUser].army = name;
+            usersData[currentUser].rank = "Er";
+            saveAndRefresh();
+            document.getElementById('lobby-modal').style.display = 'none';
+        }
+
+        function handlePixelClick(key) {
+            const userArmy = usersData[currentUser].army;
+            if(!userArmy) return alert("Önce bir orduya katılmalısın!");
+
+            // Eğer tıklanan toprak başka bir orduya aitse ordu detayını ve diplomasisini aç
+            if(mapData[key] && mapData[key].army !== userArmy) {
+                const targetArmy = mapData[key].army;
+                showDiplomacyModal(targetArmy);
+                return;
             }
-            usersData[currentUser].army = armyName;
-            usersData[currentUser].rank = "Er"; // Otomatik Er rütbesi
+
+            // Kendi toprağını veya boş toprağı boya (Pixel War)
+            mapData[key] = { army: userArmy, logo: armiesData[userArmy].logo };
             saveAndRefresh();
         }
 
-        function kickUser(targetUser) {
-            if(confirm(targetUser + " adlı askeri ihraç etmek istiyor musun?")) {
-                usersData[targetUser].army = null;
-                usersData[targetUser].rank = "Er";
+        function showDiplomacyModal(armyName) {
+            const army = armiesData[armyName];
+            document.getElementById('target-army-title').innerText = army.name;
+            document.getElementById('target-army-info').innerHTML = `Mareşal: <b>${army.marshal}</b><br>Bu orduya saldırmak veya diplomatik işlem yapmak için Paşa paneline bakabilirsin.`;
+            document.getElementById('diplomacy-modal').style.display = 'block';
+        }
+
+        function closeDiplomacy() {
+            document.getElementById('diplomacy-modal').style.display = 'none';
+        }
+
+        function kickUser(uname) {
+            if(confirm(uname + " ihraç edilsin mi?")) {
+                usersData[uname].army = null;
+                usersData[uname].rank = "Er";
                 saveAndRefresh();
             }
         }
 
-        function changeRank(targetUser, newRank) {
-            usersData[targetUser].rank = newRank;
+        function changeRank(uname, rank) {
+            usersData[uname].rank = rank;
             saveAndRefresh();
         }
 
         function sendDiplomacy() {
-            const targetArmy = document.getElementById('target-army-select').value;
+            const target = document.getElementById('target-army-select').value;
             const action = document.getElementById('diplomacy-action').value;
             const myArmy = usersData[currentUser].army;
-
-            if(!targetArmy || targetArmy === myArmy) return alert("Geçerli bir ordu seç!");
-
-            armiesData[myArmy].diplomacy[targetArmy] = action;
+            if(!target) return alert("Ordu seç!");
+            armiesData[myArmy].diplomacy[target] = action;
             saveAndRefresh();
-            alert(targetArmy + " ordusuna " + action.toUpperCase() + " talebi iletildi/güncellendi!");
-        }
-
-        function initMap() {
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            for(let x=0; x<GRID_SIZE; x++) {
-                for(let y=0; y<GRID_SIZE; y++) {
-                    const key = `${x},${y}`;
-                    const cell = document.createElement('div');
-                    cell.className = 'pixel';
-                    
-                    if(mapData[key]) {
-                        cell.style.backgroundImage = `url(${mapData[key].logo})`;
-                    }
-
-                    cell.onclick = () => {
-                        const myArmy = usersData[currentUser].army;
-                        if(!myArmy) return alert("Önce bir orduya katılmalısın!");
-                        
-                        // Her saniye piksel koyma mantığı (Harita güncelleme)
-                        mapData[key] = {
-                            army: myArmy,
-                            logo: armiesData[myArmy].logo
-                        };
-                        cell.style.backgroundImage = `url(${armiesData[myArmy].logo})`;
-                        saveAndRefresh();
-                    };
-                    grid.appendChild(cell);
-                }
-            }
+            alert(target + " ordusuna " + action.toUpperCase() + " talebi gönderildi!");
         }
 
         function updateUI() {
-            const userObj = usersData[currentUser];
-            if(!userObj) return;
+            const u = usersData[currentUser];
+            if(!u) return;
+            document.getElementById('lbl-user').innerText = currentUser;
+            document.getElementById('lbl-army').innerText = u.army || "Yok";
+            document.getElementById('lbl-rank').innerText = u.rank;
 
-            document.getElementById('lbl-army').innerText = userObj.army || "Yok";
-            document.getElementById('lbl-rank').innerText = userObj.rank;
-
-            if(userObj.army) {
-                document.getElementById('army-create-panel').style.display = 'none';
-                document.getElementById('army-list-panel').style.display = 'none';
+            if(u.army && highRanks.includes(u.rank)) {
+                document.getElementById('commander-modal').style.display = 'block';
+                renderCommandPanel(u.army);
             } else {
-                document.getElementById('army-create-panel').style.display = 'block';
-                document.getElementById('army-list-panel').style.display = 'block';
-            }
-
-            if(userObj.army && highRanks.includes(userObj.rank)) {
-                document.getElementById('commander-panel').style.display = 'block';
-                renderCommandPanel(userObj.army);
-            } else {
-                document.getElementById('commander-panel').style.display = 'none';
+                document.getElementById('commander-modal').style.display = 'none';
             }
 
             renderArmyList();
         }
 
         function renderArmyList() {
-            const container = document.getElementById('armies-container');
-            container.innerHTML = '';
+            const box = document.getElementById('armies-container');
+            box.innerHTML = '';
             for(let name in armiesData) {
-                const div = document.createElement('div');
-                div.style.cssText = "margin:6px 0; padding:6px; background:#222; border-radius:4px; display:flex; justify-content:space-between; align-items:center;";
-                div.innerHTML = `<span><b>${name}</b> (Mareşal: ${armiesData[name].marshal})</span>`;
-                
-                if(!usersData[currentUser].army) {
-                    const btn = document.createElement('button');
-                    btn.innerText = "Katıl";
-                    btn.style.width = "70px";
-                    btn.style.padding = "4px";
-                    btn.onclick = () => joinArmy(name);
-                    div.appendChild(btn);
-                }
-                container.appendChild(div);
+                box.innerHTML += `<div style="margin:5px 0; background:#eee; padding:5px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><b>${name}</b></span>
+                    <button onclick="joinArmy('${name}')" style="width:70px; padding:4px;">Katıl</button>
+                </div>`;
             }
         }
 
         function renderCommandPanel(myArmy) {
-            const memberDiv = document.getElementById('member-management');
-            memberDiv.innerHTML = "<b>Ordudaki Askerler:</b><br>";
-            
+            const memBox = document.getElementById('member-management');
+            memBox.innerHTML = "<b>Askerler:</b><br>";
             for(let uname in usersData) {
                 if(usersData[uname].army === myArmy && uname !== currentUser) {
-                    memberDiv.innerHTML += `
-                        <div style="margin:5px 0; background:#222; padding:5px; border-radius:4px;">
-                            ${uname} (${usersData[uname].rank}) 
-                            <button onclick="kickUser('${uname}')" style="width:50px; padding:2px; background:darkred; float:right;">İhraç</button>
-                            <select onchange="changeRank('${uname}', this.value)" style="width:110px; padding:2px; float:right; margin-right:5px;">
-                                ${TSK_RANKS.map(r => `<option value="${r}" ${usersData[uname].rank === r ? 'selected' : ''}>${r}</option>`).join('')}
-                            </select>
-                        </div><div style="clear:both;"></div>`;
+                    memBox.innerHTML += `<div style="margin:4px 0; background:#f9f9f9; padding:4px;">
+                        ${uname} (${usersData[uname].rank})
+                        <button onclick="kickUser('${uname}')" style="width:45px; background:darkred; float:right; padding:2px;">İhraç</button>
+                        <select onchange="changeRank('${uname}', this.value)" style="width:90px; float:right; padding:2px; margin-right:4px;">
+                            ${TSK_RANKS.map(r => `<option value="${r}" ${usersData[uname].rank === r ? 'selected' : ''}>${r}</option>`).join('')}
+                        </select>
+                    </div><div style="clear:both;"></div>`;
                 }
             }
-
-            const targetSelect = document.getElementById('target-army-select');
-            targetSelect.innerHTML = '';
+            const sel = document.getElementById('target-army-select');
+            sel.innerHTML = '';
             for(let name in armiesData) {
-                if(name !== myArmy) {
-                    targetSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                }
+                if(name !== myArmy) sel.innerHTML += `<option value="${name}">${name}</option>`;
             }
         }
 
@@ -283,10 +267,10 @@
             localStorage.setItem('hukuk_armies', JSON.stringify(armiesData));
             localStorage.setItem('hukuk_map', JSON.stringify(mapData));
             updateUI();
-            initMap();
+            buildGrid();
         }
 
-        function autoSyncData() {
+        function autoSync() {
             usersData = JSON.parse(localStorage.getItem('hukuk_users')) || usersData;
             armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || armiesData;
             mapData = JSON.parse(localStorage.getItem('hukuk_map')) || mapData;
