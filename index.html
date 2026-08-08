@@ -5,34 +5,27 @@
     <title>HÜKÜM Pixel War</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; background: #ffffff; color: #111; font-family: sans-serif; overflow: hidden; }
+        body, html { width: 100%; height: 100%; background: #ffffff; font-family: sans-serif; overflow: hidden; }
         
-        /* Tam Ekran Harita */
-        #canvas-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(100, 15px); grid-template-rows: repeat(100, 15px); background: #f0f0f0; }
-        .pixel { width: 15px; height: 15px; background: #ffffff; border: 0.5px solid #e0e0e0; cursor: pointer; background-size: cover; background-position: center; }
+        /* Devasa Tam Ekran Harita (150x150) */
+        #canvas-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(150, 12px); grid-template-rows: repeat(150, 12px); background: #ffffff; }
+        .pixel { width: 12px; height: 12px; background: #ffffff; border: 0.3px solid #e8e8e8; cursor: pointer; background-size: cover; background-position: center; }
 
-        /* Arayüz Pencereleri */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.95); border: 2px solid #333; padding: 20px; border-radius: 8px; z-index: 100; width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; }
-        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: #fff; color: #000; }
+        /* Sol Üst Köşe Komuta Paneli */
+        #left-top-panel { position: fixed; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.95); border: 1px solid #ccc; padding: 10px; border-radius: 6px; z-index: 100; width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-size: 12px; display: none; max-height: 90vh; overflow-y: auto; }
+        
+        /* Ortadaki Modaller (Giriş ve Ordu Kurma) */
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 20px; border-radius: 8px; z-index: 200; width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; }
+        
+        input, select, button { width: 100%; padding: 8px; margin: 6px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; background: #fff; color: #000; }
         button { background: #b22222; color: #fff; font-weight: bold; cursor: pointer; border: none; }
         button:hover { background: #8b0000; }
-
-        /* Üst Bilgi Barı */
-        #top-bar { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #fff; padding: 8px 12px; border-radius: 5px; font-size: 12px; z-index: 50; display: none; }
-        
-        /* Paşa Paneli */
-        #commander-modal { display: none; width: 380px; max-height: 80vh; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-    <!-- DEAVASA TAM EKRAN HARİTA -->
+    <!-- DEAVASA DÜNYA HARİTASI -->
     <div id="canvas-area"></div>
-
-    <!-- ÜST BİLGİ -->
-    <div id="top-bar">
-        Asker: <b id="lbl-user" style="color:#00ffcc;"></b> | Ordun: <b id="lbl-army" style="color:#ffcc00;">Yok</b> | Rütbe: <b id="lbl-rank" style="color:#ff5555;">Er</b>
-    </div>
 
     <!-- GİRİŞ PENCERESİ -->
     <div id="auth-modal" class="modal">
@@ -44,41 +37,44 @@
     <!-- ORDU SEÇME / KURMA PENCERESİ -->
     <div id="lobby-modal" class="modal" style="display:none;">
         <h3>Ordu Seç veya Kur</h3>
-        <div id="army-create-box">
-            <input type="text" id="army-name" placeholder="Ordu İsmi">
-            <label style="font-size:11px; text-align:left; display:block; color:#555;">Ordu Logosu (Galeriden Seç):</label>
-            <input type="file" id="army-logo-file" accept="image/*">
-            <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
-        </div>
+        <input type="text" id="army-name" placeholder="Ordu İsmi">
+        <label style="font-size:11px; text-align:left; display:block; color:#555;">Ordu Logosu (Galeriden Seç):</label>
+        <input type="file" id="army-logo-file" accept="image/*">
+        <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
         <hr style="margin: 10px 0;">
-        <div id="armies-container" style="max-height: 120px; overflow-y: auto;"></div>
+        <div id="armies-container" style="max-height: 100px; overflow-y: auto;"></div>
     </div>
 
-    <!-- PAŞA KOMUTA PANELİ -->
-    <div id="commander-modal" class="modal">
-        <h3 style="color: #b22222;">Genelkurmay / Paşa Paneli</h3>
-        <div id="member-management" style="text-align: left; font-size: 12px; margin-bottom: 10px;"></div>
-        <hr>
-        <h4>Diplomasi (Savaş / Barış / İttifak)</h4>
-        <select id="target-army-select"></select>
-        <select id="diplomacy-action">
-            <option value="savas">Savaş Aç</option>
-            <option value="baris">Barış İmzala</option>
-            <option value="ittifak">İttifak Ol</option>
-        </select>
-        <button onclick="sendDiplomacy()">Diplomatik İşlem Yap</button>
-        <button onclick="document.getElementById('commander-modal').style.display='none'" style="background:#555; margin-top:5px;">Paneli Kapat</button>
+    <!-- SOL ÜST KÖŞE KOMUTA VE RÜTBE PANELİ -->
+    <div id="left-top-panel">
+        <p><b>Asker:</b> <span id="lbl-user"></span></p>
+        <p><b>Ordu:</b> <span id="lbl-army" style="color:#b22222;">Yok</span></p>
+        <p><b>Rütbe:</b> <span id="lbl-rank" style="color:#008000;">Er</span></p>
+        <hr style="margin: 8px 0;">
+        <div id="commander-section" style="display:none;">
+            <b style="color:#b22222;">Paşa / Genelkurmay Paneli</b>
+            <div id="member-management" style="margin: 5px 0;"></div>
+            <hr style="margin: 5px 0;">
+            <label>Diplomasi:</label>
+            <select id="target-army-select"></select>
+            <select id="diplomacy-action">
+                <option value="savas">Savaş Aç</option>
+                <option value="baris">Barış İmzala</option>
+                <option value="ittifak">İttifak Ol</option>
+            </select>
+            <button onclick="sendDiplomacy()">İşlem Yap</button>
+        </div>
     </div>
 
-    <!-- DİPLOMASİ / ORDU TIKLAMA PENCERESİ -->
+    <!-- DİPLOMASİ / SALDIRI TIKLAMA PENCERESİ -->
     <div id="diplomacy-modal" class="modal" style="display:none;">
-        <h3 id="target-army-title">Ordu Detayı</h3>
+        <h3 id="target-army-title">Toprak / Ordu</h3>
         <p id="target-army-info" style="font-size:13px; margin:10px 0;"></p>
-        <button onclick="closeDiplomacy()" style="background:#555;">Kapat</button>
+        <button onclick="document.getElementById('diplomacy-modal').style.display='none'" style="background:#555;">Kapat</button>
     </div>
 
     <script>
-        const GRID_SIZE = 100;
+        const GRID_SIZE = 150; // Devasa Dünya Haritası
         let currentUser = localStorage.getItem('hukuk_user') || null;
         let usersData = JSON.parse(localStorage.getItem('hukuk_users')) || {};
         let armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || {};
@@ -124,7 +120,7 @@
             }
 
             document.getElementById('auth-modal').style.display = 'none';
-            document.getElementById('top-bar').style.display = 'block';
+            document.getElementById('left-top-panel').style.display = 'block';
             
             if(!usersData[currentUser].army) {
                 document.getElementById('lobby-modal').style.display = 'block';
@@ -167,14 +163,14 @@
             const userArmy = usersData[currentUser].army;
             if(!userArmy) return alert("Önce bir orduya katılmalısın!");
 
-            // Eğer tıklanan toprak başka bir orduya aitse ordu detayını ve diplomasisini aç
+            // Başka ordunun toprağına tıklama
             if(mapData[key] && mapData[key].army !== userArmy) {
                 const targetArmy = mapData[key].army;
                 showDiplomacyModal(targetArmy);
                 return;
             }
 
-            // Kendi toprağını veya boş toprağı boya (Pixel War)
+            // Boş toprak veya kendi toprağını fethetme
             mapData[key] = { army: userArmy, logo: armiesData[userArmy].logo };
             saveAndRefresh();
         }
@@ -182,12 +178,8 @@
         function showDiplomacyModal(armyName) {
             const army = armiesData[armyName];
             document.getElementById('target-army-title').innerText = army.name;
-            document.getElementById('target-army-info').innerHTML = `Mareşal: <b>${army.marshal}</b><br>Bu orduya saldırmak veya diplomatik işlem yapmak için Paşa paneline bakabilirsin.`;
+            document.getElementById('target-army-info').innerHTML = `Mareşal: <b>${army.marshal}</b><br>Bu orduya karşı sol üst panelden savaş açabilir veya diplomasi yürütebilirsin.`;
             document.getElementById('diplomacy-modal').style.display = 'block';
-        }
-
-        function closeDiplomacy() {
-            document.getElementById('diplomacy-modal').style.display = 'none';
         }
 
         function kickUser(uname) {
@@ -221,10 +213,10 @@
             document.getElementById('lbl-rank').innerText = u.rank;
 
             if(u.army && highRanks.includes(u.rank)) {
-                document.getElementById('commander-modal').style.display = 'block';
+                document.getElementById('commander-section').style.display = 'block';
                 renderCommandPanel(u.army);
             } else {
-                document.getElementById('commander-modal').style.display = 'none';
+                document.getElementById('commander-section').style.display = 'none';
             }
 
             renderArmyList();
@@ -234,9 +226,9 @@
             const box = document.getElementById('armies-container');
             box.innerHTML = '';
             for(let name in armiesData) {
-                box.innerHTML += `<div style="margin:5px 0; background:#eee; padding:5px; display:flex; justify-content:space-between; align-items:center;">
+                box.innerHTML += `<div style="margin:4px 0; background:#f4f4f4; padding:4px; display:flex; justify-content:space-between; align-items:center;">
                     <span><b>${name}</b></span>
-                    <button onclick="joinArmy('${name}')" style="width:70px; padding:4px;">Katıl</button>
+                    <button onclick="joinArmy('${name}')" style="width:60px; padding:3px;">Katıl</button>
                 </div>`;
             }
         }
@@ -246,10 +238,10 @@
             memBox.innerHTML = "<b>Askerler:</b><br>";
             for(let uname in usersData) {
                 if(usersData[uname].army === myArmy && uname !== currentUser) {
-                    memBox.innerHTML += `<div style="margin:4px 0; background:#f9f9f9; padding:4px;">
+                    memBox.innerHTML += `<div style="margin:3px 0; background:#f9f9f9; padding:3px; font-size:11px;">
                         ${uname} (${usersData[uname].rank})
-                        <button onclick="kickUser('${uname}')" style="width:45px; background:darkred; float:right; padding:2px;">İhraç</button>
-                        <select onchange="changeRank('${uname}', this.value)" style="width:90px; float:right; padding:2px; margin-right:4px;">
+                        <button onclick="kickUser('${uname}')" style="width:40px; background:darkred; float:right; padding:1px;">İhraç</button>
+                        <select onchange="changeRank('${uname}', this.value)" style="width:80px; float:right; padding:1px; margin-right:3px; font-size:10px;">
                             ${TSK_RANKS.map(r => `<option value="${r}" ${usersData[uname].rank === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
                     </div><div style="clear:both;"></div>`;
