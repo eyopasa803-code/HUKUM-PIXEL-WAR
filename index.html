@@ -2,50 +2,56 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HÜKÜM Pixel War</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; background: #ffffff; font-family: sans-serif; overflow: hidden; }
         
-        /* Devasa Dünya Fetih Haritası (200x200) */
-        #canvas-area { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(200, 10px); grid-template-rows: repeat(200, 10px); background: #ffffff; }
-        .pixel { width: 10px; height: 10px; background: #ffffff; border: 0.2px solid #eaeaea; cursor: pointer; background-size: cover; background-position: center; }
+        /* Harita Kapsayıcısı (Kaydırılabilir Devasa Dünya) */
+        #map-viewport { width: 100vw; height: 100vh; overflow: auto; position: relative; background: #ffffff; -webkit-overflow-scrolling: touch; }
+        #canvas-area { display: grid; grid-template-columns: repeat(300, 16px); grid-template-rows: repeat(300, 16px); width: max-content; height: max-content; background: #ffffff; }
+        .pixel { width: 16px; height: 16px; background: #ffffff; border: 0.3px solid #e0e0e0; cursor: pointer; background-size: cover; background-position: center; }
 
-        /* Sol Üst Devasa Açılır/Kapanan Komuta Menüsü */
-        #menu-toggle-btn { position: fixed; top: 15px; left: 15px; z-index: 300; background: #b22222; color: #fff; border: none; padding: 10px 15px; font-weight: bold; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3); display: none; }
-        #left-top-panel { position: fixed; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.98); border: 2px solid #b22222; padding: 15px; border-radius: 8px; z-index: 200; width: 350px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); font-size: 13px; display: none; }
+        /* Sol Üst Hamburger Menü Butonu */
+        #menu-toggle-btn { position: fixed; top: 15px; left: 15px; z-index: 300; background: #b22222; color: #fff; border: none; padding: 12px 18px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 15px; display: none; }
+        
+        /* Devasa Açılır Komuta Paneli */
+        #left-top-panel { position: fixed; top: 15px; left: 15px; background: rgba(255, 255, 255, 0.98); border: 2px solid #b22222; padding: 20px; border-radius: 10px; z-index: 250; width: 360px; max-height: 85vh; overflow-y: auto; box-shadow: 0 6px 25px rgba(0,0,0,0.3); font-size: 14px; display: none; }
         
         /* Ortadaki Modaller (Giriş ve Ordu Kurma) */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 20px; border-radius: 8px; z-index: 400; width: 340px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 25px; border-radius: 10px; z-index: 400; width: 90%; max-width: 350px; box-shadow: 0 6px 25px rgba(0,0,0,0.4); text-align: center; }
         
-        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: #fff; color: #000; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fff; color: #000; }
         button { background: #b22222; color: #fff; font-weight: bold; cursor: pointer; border: none; }
         button:hover { background: #8b0000; }
     </style>
 </head>
 <body>
 
-    <!-- HARİTA -->
-    <div id="canvas-area"></div>
+    <!-- KAYDIRILABİLİR DEAVASA DÜNYA HARİTASI -->
+    <div id="map-viewport">
+        <div id="canvas-area"></div>
+    </div>
 
     <!-- MENÜ AÇ/KAPA BUTONU -->
     <button id="menu-toggle-btn" onclick="toggleMenu()">Komuta Paneli ☰</button>
 
     <!-- SOL ÜST DEVASA KOMUTA PANELİ -->
     <div id="left-top-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h3 style="color:#b22222;">Karargah Masası</h3>
-            <button onclick="toggleMenu()" style="width:auto; padding:4px 8px; background:#555;">Kapat X</button>
+            <button onclick="toggleMenu()" style="width:auto; padding:6px 12px; background:#555; margin:0;">Kapat X</button>
         </div>
         <p><b>Asker:</b> <span id="lbl-user" style="color:#333;"></span></p>
         <p><b>Ordu:</b> <span id="lbl-army" style="color:#b22222;">Yok</span></p>
         <p><b>Rütbe:</b> <span id="lbl-rank" style="color:#008000;">Er</span></p>
-        <hr style="margin: 10px 0;">
+        <hr style="margin: 12px 0;">
         
         <div id="commander-section" style="display:none;">
             <b style="color:#b22222;">Paşa / Genelkurmay Yönetimi</b>
-            <div id="member-management" style="margin: 8px 0;"></div>
-            <hr style="margin: 10px 0;">
+            <div id="member-management" style="margin: 10px 0;"></div>
+            <hr style="margin: 12px 0;">
             <b>Diplomasi (Savaş / Barış / İttifak)</b>
             <select id="target-army-select"></select>
             <select id="diplomacy-action">
@@ -61,29 +67,29 @@
     <div id="auth-modal" class="modal">
         <h3>Askeri Kimlik</h3>
         <input type="text" id="username" placeholder="Kullanıcı Adınız">
-        <button onclick="loginUser()">Sisteme Giriş Yap</button>
+        <button onclick="loginUser()">Karargaha Gir</button>
     </div>
 
     <!-- ORDU SEÇME / KURMA PENCERESİ -->
     <div id="lobby-modal" class="modal" style="display:none;">
         <h3>Ordu Seç veya Kur</h3>
         <input type="text" id="army-name" placeholder="Ordu İsmi">
-        <label style="font-size:11px; text-align:left; display:block; color:#555;">Ordu Logosu (Galeriden Seç):</label>
+        <label style="font-size:12px; text-align:left; display:block; color:#555;">Ordu Logosu (Galeriden Seç):</label>
         <input type="file" id="army-logo-file" accept="image/*">
         <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
-        <hr style="margin: 10px 0;">
-        <div id="armies-container" style="max-height: 120px; overflow-y: auto;"></div>
+        <hr style="margin: 12px 0;">
+        <div id="armies-container" style="max-height: 140px; overflow-y: auto;"></div>
     </div>
 
     <!-- DİPLOMASİ / SALDIRI TIKLAMA PENCERESİ -->
     <div id="diplomacy-modal" class="modal" style="display:none;">
         <h3 id="target-army-title">Toprak Bilgisi</h3>
-        <p id="target-army-info" style="font-size:13px; margin:10px 0;"></p>
+        <p id="target-army-info" style="font-size:14px; margin:12px 0;"></p>
         <button onclick="document.getElementById('diplomacy-modal').style.display='none'" style="background:#555;">Kapat</button>
     </div>
 
     <script>
-        const GRID_SIZE = 200; // Devasa Dünya Haritası Pikselleri
+        const GRID_SIZE = 300; // 300x300 Devasa Dünya Haritası
         let currentUser = localStorage.getItem('hukuk_user') || null;
         let usersData = JSON.parse(localStorage.getItem('hukuk_users')) || {};
         let armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || {};
@@ -94,6 +100,11 @@
 
         window.onload = function() {
             buildGrid();
+            // Haritayı tam ortaya (merkeze) kaydır
+            const vp = document.getElementById('map-viewport');
+            vp.scrollLeft = (vp.scrollWidth - vp.clientWidth) / 2;
+            vp.scrollTop = (vp.scrollHeight - vp.clientHeight) / 2;
+
             if(currentUser && usersData[currentUser]) {
                 document.getElementById('username').value = currentUser;
                 loginUser();
@@ -240,9 +251,9 @@
             const box = document.getElementById('armies-container');
             box.innerHTML = '';
             for(let name in armiesData) {
-                box.innerHTML += `<div style="margin:5px 0; background:#f4f4f4; padding:6px; display:flex; justify-content:space-between; align-items:center; border-radius:4px;">
+                box.innerHTML += `<div style="margin:6px 0; background:#f4f4f4; padding:8px; display:flex; justify-content:space-between; align-items:center; border-radius:6px;">
                     <span><b>${name}</b></span>
-                    <button onclick="joinArmy('${name}')" style="width:70px; padding:4px;">Katıl</button>
+                    <button onclick="joinArmy('${name}')" style="width:75px; padding:6px; margin:0;">Katıl</button>
                 </div>`;
             }
         }
@@ -252,10 +263,10 @@
             memBox.innerHTML = "<b>Ordudaki Askerler:</b><br>";
             for(let uname in usersData) {
                 if(usersData[uname].army === myArmy && uname !== currentUser) {
-                    memBox.innerHTML += `<div style="margin:4px 0; background:#f9f9f9; padding:5px; border-radius:4px; font-size:12px;">
+                    memBox.innerHTML += `<div style="margin:6px 0; background:#f9f9f9; padding:6px; border-radius:6px; font-size:13px;">
                         ${uname} (${usersData[uname].rank})
-                        <button onclick="kickUser('${uname}')" style="width:45px; background:darkred; float:right; padding:2px;">İhraç</button>
-                        <select onchange="changeRank('${uname}', this.value)" style="width:90px; float:right; padding:2px; margin-right:4px; font-size:11px;">
+                        <button onclick="kickUser('${uname}')" style="width:50px; background:darkred; float:right; padding:3px; margin:0;">İhraç</button>
+                        <select onchange="changeRank('${uname}', this.value)" style="width:100px; float:right; padding:3px; margin:0 5px 0 0; font-size:11px;">
                             ${TSK_RANKS.map(r => `<option value="${r}" ${usersData[uname].rank === r ? 'selected' : ''}>${r}</option>`).join('')}
                         </select>
                     </div><div style="clear:both;"></div>`;
