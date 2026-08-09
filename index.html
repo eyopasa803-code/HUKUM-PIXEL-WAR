@@ -1,308 +1,920 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HÜKÜM Pixel War</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; background: #ffffff; font-family: sans-serif; overflow: hidden; position: fixed; }
-        
-        /* Tam Ekran Kaydırılabilir Devasa Dünya Haritası */
-        #map-viewport { width: 100vw; height: 100vh; overflow: auto; position: absolute; top: 0; left: 0; background: #ffffff; -webkit-overflow-scrolling: touch; }
-        #canvas-area { display: grid; grid-template-columns: repeat(300, 16px); grid-template-rows: repeat(300, 16px); width: max-content; height: max-content; background: #ffffff; }
-        .pixel { width: 16px; height: 16px; background: #ffffff; border: 0.3px solid #eaeaea; cursor: pointer; background-size: cover; background-position: center; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HÜKÜM Pixel War</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12161c; --panel2:#1a1f27; --accent:#c9a227; --accent2:#8a1f1f;
+    --text:#e8e6df; --muted:#9aa0aa; --border:#2b323d; --ok:#3a8f4f; --warn:#b23b3b;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:var(--bg); color:var(--text);
+    font-family:'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+    touch-action:none; user-select:none; -webkit-user-select:none;
+  }
+  #app{position:fixed; inset:0; width:100%; height:100%; overflow:hidden;}
+  .screen{position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at center, #171b21 0%, #0b0d10 100%); padding:16px; overflow:hidden;}
+  .screen.active{display:flex;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:28px; width:100%; max-width:420px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .card h1{margin:0 0 4px; font-size:24px; letter-spacing:2px; color:var(--accent); text-align:center;}
+  .card .sub{color:var(--muted); text-align:center; font-size:12px; margin-bottom:20px; letter-spacing:1px;}
+  input[type=text]{width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--border); background:var(--panel2);
+    color:var(--text); font-size:15px; outline:none;}
+  input[type=text]:focus{border-color:var(--accent);}
+  button{cursor:pointer; font-family:inherit;}
+  .btn{padding:12px 16px; border-radius:8px; border:1px solid var(--accent); background:linear-gradient(180deg,#d8b53a,#a9841c);
+    color:#1a1400; font-weight:bold; font-size:14px; letter-spacing:.5px; width:100%; margin-top:14px;}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{background:var(--panel2); color:var(--text); border-color:var(--border);}
+  .btn.danger{background:linear-gradient(180deg,#c24141,#7a1f1f); border-color:#7a1f1f; color:#fff;}
+  .btn.small{width:auto; padding:6px 10px; font-size:12px; margin-top:0;}
 
-        /* Sol Üst Komuta Paneli Butonu */
-        #menu-toggle-btn { position: fixed; top: 12px; left: 12px; z-index: 300; background: #b22222; color: #fff; border: none; padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 14px; display: none; }
-        
-        /* Sol Üst Devasa Açılır/Kapanan Komuta Menüsü */
-        #left-top-panel { position: fixed; top: 60px; left: 12px; background: rgba(255, 255, 255, 0.98); border: 2px solid #b22222; padding: 15px; border-radius: 10px; z-index: 250; width: 340px; max-height: 80vh; overflow-y: auto; box-shadow: 0 6px 25px rgba(0,0,0,0.3); font-size: 13px; display: none; }
-        
-        /* Toprak Üzerinde Açılan Mini Savaş/Diplomasi Kutusu */
-        #mini-popup { position: absolute; background: #fff; border: 2px solid #b22222; padding: 10px; border-radius: 6px; z-index: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: none; width: 160px; text-align: center; }
-        #mini-popup button { width: 100%; padding: 6px; margin: 3px 0; font-size: 12px; background: #b22222; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-        #mini-popup button.close-btn { background: #555; }
+  /* LOBBY */
+  #screen-lobby{justify-content:flex-start; padding-top:24px;}
+  .lobby-wrap{width:100%; max-width:520px; height:100%; display:flex; flex-direction:column; overflow:hidden;}
+  .lobby-title{text-align:center; color:var(--accent); letter-spacing:2px; margin-bottom:12px; flex-shrink:0;}
+  .army-list{flex:1; overflow-y:auto; overflow-x:hidden; padding:4px; display:flex; flex-direction:column; gap:10px;}
+  .army-item{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    display:flex; align-items:center; gap:12px;}
+  .army-item .logo{font-size:28px; width:42px; text-align:center;}
+  .army-item .info{flex:1; min-width:0;}
+  .army-item .info .n{font-weight:bold; font-size:15px;}
+  .army-item .info .m{color:var(--muted); font-size:12px;}
+  .create-toggle{flex-shrink:0; margin-top:10px;}
+  .logo-pick{display:flex; flex-wrap:wrap; gap:6px; margin:10px 0;}
+  .logo-pick span{font-size:22px; padding:6px; border-radius:8px; border:2px solid transparent; background:var(--panel2); cursor:pointer;}
+  .logo-pick span.sel{border-color:var(--accent); background:#3a3220;}
+  .empty-hint{color:var(--muted); text-align:center; padding:20px; font-size:13px;}
 
-        /* Ortadaki Modaller (Giriş ve Ordu Kurma) */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 20px; border-radius: 10px; z-index: 600; width: 90%; max-width: 340px; box-shadow: 0 6px 25px rgba(0,0,0,0.4); text-align: center; display: none; }
-        
-        input, select, button { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background: #fff; color: #000; }
-        .modal button { background: #b22222; color: #fff; font-weight: bold; cursor: pointer; border: none; }
-    </style>
+  /* GAME */
+  #screen-game{padding:0; background:#000;}
+  #mapViewport{position:absolute; inset:0; overflow:hidden; touch-action:none; background:#050607;}
+  #mapWorld{position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform;}
+  #mapImg{display:block; user-select:none; pointer-events:none; -webkit-user-drag:none;}
+  #gridCanvas{position:absolute; top:0; left:0;}
+
+  .topbar{position:fixed; top:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-start;
+    padding:10px; pointer-events:none; z-index:40;}
+  .topbar > *{pointer-events:auto;}
+  #menuBtn{background:rgba(18,22,28,.9); border:1px solid var(--accent); color:var(--accent); border-radius:8px;
+    padding:10px 14px; font-size:14px; font-weight:bold; letter-spacing:.5px;}
+  #zoomHint{background:rgba(18,22,28,.85); border:1px solid var(--border); border-radius:8px; padding:8px 10px;
+    color:var(--muted); font-size:11px; display:flex; gap:8px;}
+  #zoomHint button{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; width:26px; height:26px;}
+
+  /* COMMAND PANEL */
+  #cmdPanel{position:fixed; top:0; left:0; bottom:0; width:min(340px,88vw); background:linear-gradient(180deg,#161a20,#0e1116);
+    border-right:2px solid var(--accent); z-index:60; transform:translateX(-105%); transition:transform .25s ease;
+    display:flex; flex-direction:column; overflow:hidden;}
+  #cmdPanel.open{transform:translateX(0);}
+  .cmd-head{padding:16px; border-bottom:1px solid var(--border); background:
+    repeating-linear-gradient(45deg, #1a1f27 0 10px, #171b21 10px 20px);}
+  .cmd-head .name{font-size:18px; font-weight:bold;}
+  .cmd-head .army{color:var(--accent); font-size:13px; margin-top:2px;}
+  .cmd-head .rank{display:inline-block; margin-top:8px; padding:4px 10px; background:var(--panel2); border:1px solid var(--accent);
+    border-radius:20px; font-size:12px; letter-spacing:.5px;}
+  .cmd-body{flex:1; overflow-y:auto; padding:14px;}
+  .cmd-sec{margin-bottom:18px;}
+  .cmd-sec h3{margin:0 0 8px; font-size:12px; letter-spacing:1px; color:var(--muted); text-transform:uppercase;
+    border-bottom:1px solid var(--border); padding-bottom:6px;}
+  .member-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #1e242c; font-size:13px;}
+  .member-row .mn{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .member-row select{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:11px; padding:3px;}
+  .prop-row{background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:8px; font-size:12px;}
+  .prop-row .actions{display:flex; gap:6px; margin-top:6px;}
+  .stat-row{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--muted);}
+  #closeCmdBtn{position:absolute; top:12px; right:12px; background:none; border:none; color:var(--muted); font-size:20px;}
+
+  /* CHAT */
+  #chatToggle{position:fixed; bottom:16px; right:16px; z-index:55; background:var(--accent2); border:2px solid #e0c060;
+    color:#fff; border-radius:50%; width:52px; height:52px; font-size:22px; box-shadow:0 4px 14px rgba(0,0,0,.5);}
+  #chatBox{position:fixed; bottom:78px; right:16px; width:min(300px,88vw); height:360px; max-height:60vh; background:rgba(15,18,22,.97);
+    border:1px solid var(--accent); border-radius:12px; z-index:55; display:none; flex-direction:column; overflow:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,.6);}
+  #chatBox.open{display:flex;}
+  .chat-head{padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; font-weight:bold; color:var(--accent);}
+  #chatMsgs{flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:6px; font-size:12.5px;}
+  .cmsg{line-height:1.35;}
+  .cmsg b{color:var(--accent);}
+  .chat-input-row{display:flex; border-top:1px solid var(--border);}
+  #chatInput{flex:1; border:none; background:var(--panel2); color:var(--text); padding:10px; font-size:13px; outline:none;}
+  #chatSend{background:var(--accent); border:none; color:#1a1400; font-weight:bold; padding:0 14px;}
+
+  /* DIPLOMACY POPUP */
+  #dipPopup{position:fixed; z-index:70; background:rgba(18,22,28,.98); border:1px solid var(--accent); border-radius:10px;
+    padding:12px; display:none; min-width:190px; box-shadow:0 6px 24px rgba(0,0,0,.6);}
+  #dipPopup.open{display:block;}
+  #dipPopup .tname{font-weight:bold; font-size:14px; margin-bottom:2px;}
+  #dipPopup .tstatus{font-size:11px; color:var(--muted); margin-bottom:10px;}
+  #dipPopup button{display:block; width:100%; padding:8px; margin-bottom:6px; border-radius:6px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); font-size:12.5px; text-align:left;}
+  #dipPopup button:disabled{opacity:.35; cursor:not-allowed;}
+  #dipPopup button.war{border-color:var(--warn);}
+  #dipPopup button.peace{border-color:#4a90c2;}
+  #dipPopup button.alliance{border-color:#3a8f4f;}
+
+  .toast{position:fixed; top:14px; left:50%; transform:translateX(-50%); background:rgba(18,22,28,.96); border:1px solid var(--accent);
+    color:var(--text); padding:10px 16px; border-radius:8px; font-size:13px; z-index:90; opacity:0; transition:opacity .3s; pointer-events:none;}
+  .toast.show{opacity:1;}
+
+  #syncBadge{position:fixed; bottom:12px; left:12px; z-index:40; font-size:10px; color:var(--muted); background:rgba(18,22,28,.7);
+    padding:4px 8px; border-radius:6px; display:flex; align-items:center; gap:5px;}
+  #syncDot{width:7px; height:7px; border-radius:50%; background:#666;}
+  #syncDot.ok{background:var(--ok);} #syncDot.bad{background:var(--warn);}
+
+  ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-thumb{background:#333a44; border-radius:3px;}
+</style>
 </head>
 <body>
+<div id="app">
 
-    <!-- HARİTA GÖRÜNTÜLEYİCİ -->
-    <div id="map-viewport">
-        <div id="canvas-area"></div>
-        <div id="mini-popup">
-            <b id="popup-army-name" style="font-size:12px; color:#b22222;">Ordu</b>
-            <button onclick="sendDiplomacyAction('savas')">Savaş Aç</button>
-            <button onclick="sendDiplomacyAction('baris')">Barış İmzala</button>
-            <button onclick="sendDiplomacyAction('ittifak')">İttifak Ol</button>
-            <button class="close-btn" onclick="closePopup()">Kapat</button>
+  <!-- LOGIN -->
+  <div class="screen active" id="screen-login">
+    <div class="card">
+      <h1>⚔ HÜKÜM ⚔</h1>
+      <div class="sub">PIXEL WAR — ASKERİ KİMLİK BİLDİRİMİ</div>
+      <input type="text" id="usernameInput" placeholder="Askeri kimliğinizi girin..." maxlength="18">
+      <button class="btn" id="loginBtn">Cepheye Katıl</button>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div class="screen" id="screen-lobby">
+    <div class="lobby-wrap">
+      <div class="lobby-title">🎖 ORDU SEÇ VEYA KUR 🎖</div>
+      <div class="army-list" id="armyList"></div>
+      <div class="create-toggle">
+        <button class="btn secondary" id="showCreateBtn">+ Yeni Ordu Kur</button>
+      </div>
+      <div id="createForm" style="display:none;">
+        <input type="text" id="armyNameInput" placeholder="Ordu adı..." maxlength="20" style="margin-top:10px;">
+        <div class="logo-pick" id="logoPick"></div>
+        <button class="btn" id="createArmyBtn">Ordumu Kur (Mareşal Ol)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="screen-game">
+    <div id="mapViewport">
+      <div id="mapWorld">
+        <img id="mapImg" src="https://upload.wikimedia.org/wikipedia/commons/8/83/Equirectangular_projection_SW.jpg" alt="dünya haritası">
+        <canvas id="gridCanvas"></canvas>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <button id="menuBtn">☰ Komuta Paneli</button>
+      <div id="zoomHint">
+        <button id="zoomOut">−</button>
+        <span id="zoomLbl">100%</span>
+        <button id="zoomIn">+</button>
+      </div>
+    </div>
+
+    <div id="syncBadge"><span id="syncDot"></span><span id="syncTxt">senkronize ediliyor...</span></div>
+
+    <!-- Command Panel -->
+    <div id="cmdPanel">
+      <button id="closeCmdBtn">✕</button>
+      <div class="cmd-head">
+        <div class="name" id="cpName">-</div>
+        <div class="army" id="cpArmy">-</div>
+        <div class="rank" id="cpRank">-</div>
+      </div>
+      <div class="cmd-body">
+        <div class="cmd-sec">
+          <h3>Ordu Durumu</h3>
+          <div class="stat-row"><span>Mensup Sayısı</span><span id="stMembers">-</span></div>
+          <div class="stat-row"><span>Ele Geçirilen Toprak</span><span id="stTiles">-</span></div>
         </div>
-    </div>
-
-    <!-- KOMUTA PANELİ AÇ/KAPA TUŞU -->
-    <button id="menu-toggle-btn" onclick="toggleMenu()">Komuta Paneli ☰</button>
-
-    <!-- SOL ÜST DEVASA KOMUTA PANELİ -->
-    <div id="left-top-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 style="color:#b22222; font-size:15px;">Karargah Masası</h3>
-            <button onclick="toggleMenu()" style="width:auto; padding:4px 10px; background:#555; margin:0; font-size:12px;">Kapat X</button>
+        <div class="cmd-sec" id="dipPropSec" style="display:none;">
+          <h3>Gelen Diplomasi Teklifleri</h3>
+          <div id="dipPropList"></div>
         </div>
-        <p><b>Asker:</b> <span id="lbl-user" style="color:#333;"></span></p>
-        <p><b>Ordun:</b> <span id="lbl-army" style="color:#b22222;">Yok</span></p>
-        <p><b>Rütben:</b> <span id="lbl-rank" style="color:#008000;">Er</span></p>
-        <hr style="margin: 10px 0;">
-        
-        <div id="commander-section" style="display:none;">
-            <b style="color:#b22222; font-size:13px;">Paşa / Genelkurmay Yönetimi</b>
-            <div id="member-management" style="margin: 8px 0;"></div>
+        <div class="cmd-sec" id="mgmtSec" style="display:none;">
+          <h3>Ordu Yönetimi</h3>
+          <div id="memberMgmtList"></div>
         </div>
-        <button onclick="logoutUser()" style="background:#333; margin-top:10px;">Hesaptan Çık / Sıfırla</button>
+      </div>
     </div>
 
-    <!-- GİRİŞ PENCERESİ -->
-    <div id="auth-modal" class="modal">
-        <h3 style="margin-bottom:10px;">Askeri Kimlik</h3>
-        <input type="text" id="username" placeholder="Kullanıcı Adınız">
-        <button onclick="loginUser()">Karargaha Gir</button>
+    <!-- Diplomacy Popup -->
+    <div id="dipPopup">
+      <div class="tname" id="dipName">-</div>
+      <div class="tstatus" id="dipStatus">-</div>
+      <button class="war" id="dipWar">⚔ Savaş Aç</button>
+      <button class="peace" id="dipPeace">🕊 Barış İmzala</button>
+      <button class="alliance" id="dipAlliance">🤝 İttifak Ol</button>
+      <button id="dipClose">Kapat</button>
     </div>
 
-    <!-- ORDU SEÇME / KURMA PENCERESİ -->
-    <div id="lobby-modal" class="modal">
-        <h3 style="margin-bottom:10px;">Ordu Seç veya Kur</h3>
-        <input type="text" id="army-name" placeholder="Ordu İsmi">
-        <label style="font-size:11px; text-align:left; display:block; color:#555; margin-top:4px;">Ordu Logosu (Galeriden Seç):</label>
-        <input type="file" id="army-logo-file" accept="image/*">
-        <button onclick="createArmy()">Orduyu Kur ve Mareşal Ol</button>
-        <hr style="margin: 10px 0;">
-        <div id="armies-container" style="max-height: 120px; overflow-y: auto;"></div>
+    <!-- Chat -->
+    <button id="chatToggle">💬</button>
+    <div id="chatBox">
+      <div class="chat-head">🗨 Cephe Hattı — Genel Sohbet</div>
+      <div id="chatMsgs"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="Mesaj yaz..." maxlength="200">
+        <button id="chatSend">Gönder</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-        const GRID_SIZE = 300;
-        let currentUser = localStorage.getItem('hukuk_user') || null;
-        let usersData = JSON.parse(localStorage.getItem('hukuk_users')) || {};
-        let armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || {};
-        let mapData = JSON.parse(localStorage.getItem('hukuk_map')) || {};
-        let selectedTargetArmy = null;
+  <div class="toast" id="toast"></div>
+</div>
 
-        const TSK_RANKS = ["Er", "Onbaşı", "Uzman Çavuş", "Astsubay", "Teğmen", "Üsteğmen", "Yüzbaşı", "Binbaşı", "Yarbay", "Albay", "Tuğgeneral", "Tümgeneral", "Korgeneral", "Orgeneral", "Genelkurmay Başkanı", "Mareşal"];
-        const highRanks = ["Tuğgeneral", "Tümgeneral", "Korgeneral", "Orgeneral", "Genelkurmay Başkanı", "Mareşal"];
+<script>
+(function(){
+"use strict";
 
-        window.onload = function() {
-            buildGrid();
-            const vp = document.getElementById('map-viewport');
-            vp.scrollLeft = (vp.scrollWidth - vp.clientWidth) / 2;
-            vp.scrollTop = (vp.scrollHeight - vp.clientHeight) / 2;
+  // Bucket ismi tamamen sana özel olarak güncellendi:
+  var BUCKET_NAME = "hukum-pixelwar-official-2026-tr";
+  var KV_BASE = "https://kvdb.io/" + BUCKET_NAME + "/";
+  var POLL_MS = 3000;
 
-            if(currentUser && usersData[currentUser]) {
-                document.getElementById('username').value = currentUser;
-                document.getElementById('menu-toggle-btn').style.display = 'block';
-                if(!usersData[currentUser].army) {
-                    document.getElementById('lobby-modal').style.display = 'block';
-                }
-                updateUI();
-            } else {
-                document.getElementById('auth-modal').style.display = 'block';
-            }
-            setInterval(autoSync, 1000);
-        };
+  /* ---------- RÜTBELER ---------- */
+  var RANKS = ["Er","Onbaşı","Çavuş","Teğmen","Üsteğmen","Yüzbaşı","Binbaşı","Yarbay","Albay",
+    "Tuğgeneral","Tümgeneral","Korgeneral","Orgeneral","Genelkurmay Başkanı","Mareşal"];
+  var MGMT_MIN = 9;   // Tuğgeneral ve üzeri: rütbe değiştirme / ihraç
+  var DIPLO_MIN = 13; // Genelkurmay Başkanı ve üzeri: diplomasi
+  var FOUNDER_RANK = 14; // Mareşal
 
-        function toggleMenu() {
-            const panel = document.getElementById('left-top-panel');
-            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+  var LOGOS = ["🦅","🐺","🦁","🐉","🛡️","☠️","🔱","🏹","🐍","🦂","🐻","🦈","👑","🔥","⭐","🐗","🦂","🦉","🐲","⚓"];
+  var COLORS = ["#c0392b","#2980b9","#27ae60","#8e44ad","#d35400","#16a085","#f39c12","#2c3e50",
+    "#c2185b","#00796b","#5d4037","#455a64","#7b1fa2","#0288d1","#558b2f","#e64a19","#546e7a","#ad1457","#00695c","#4527a0"];
+
+  /* ---------- YEREL KULLANICI ---------- */
+  function uid(){ return 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+  var myUserId = localStorage.getItem('hpw_uid');
+  var myUsername = localStorage.getItem('hpw_uname');
+  var myArmyId = localStorage.getItem('hpw_army') || null;
+
+  /* ---------- OYUN DURUMU (sunucudan gelen) ---------- */
+  var state = { armies:{}, tiles:{}, diplomacy:{}, chat:[] };
+  var GRID = 300; // 300x300 grid
+
+  /* ---------- YARDIMCI: fetch ile kvdb ---------- */
+  function kvGet(key){
+    return fetch(KV_BASE + key + "?t=" + Date.now(), {cache:"no-store"})
+      .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error('get fail'); return r.text(); })
+      .then(function(txt){ if(!txt) return null; try{ return JSON.parse(txt); }catch(e){ return null; } });
+  }
+  function kvPut(key, obj){
+    return fetch(KV_BASE + key, {method:"PUT", body: JSON.stringify(obj)})
+      .then(function(r){ if(!r.ok) throw new Error('put fail'); return true; });
+  }
+
+  function setSync(ok, txt){
+    var dot = document.getElementById('syncDot');
+    dot.className = ok ? 'ok' : 'bad';
+    document.getElementById('syncTxt').textContent = txt;
+  }
+
+  function toast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show';
+    clearTimeout(t._to);
+    t._to = setTimeout(function(){ t.className = 'toast'; }, 2200);
+  }
+
+  /* ---------- SUNUCUDAN TAM DURUM ÇEK ---------- */
+  var pulling = false;
+  function pullAll(){
+    if(pulling) return Promise.resolve();
+    pulling = true;
+    return Promise.all([
+      kvGet('armies'), kvGet('tiles'), kvGet('diplomacy'), kvGet('chat')
+    ]).then(function(res){
+      state.armies = res[0] || {};
+      state.tiles = res[1] || {};
+      state.diplomacy = res[2] || {};
+      state.chat = res[3] || [];
+      pulling = false;
+      setSync(true, 'senkron (' + new Date().toLocaleTimeString('tr-TR') + ')');
+      onStateUpdated();
+    }).catch(function(err){
+      pulling = false;
+      setSync(false, 'bağlantı sorunu — yeniden denenecek');
+    });
+  }
+
+  function mergeWrite(key, mutateFn){
+    return kvGet(key).then(function(latest){
+      latest = latest || (key==='chat' ? [] : {});
+      var updated = mutateFn(latest);
+      return kvPut(key, updated).then(function(){
+        state[key] = updated;
+        return updated;
+      });
+    });
+  }
+
+  /* ============================================================
+     EKRAN YÖNETİMİ
+     ============================================================ */
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  /* ============================================================
+     GİRİŞ
+     ============================================================ */
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('usernameInput').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+  function doLogin(){
+    var v = document.getElementById('usernameInput').value.trim();
+    if(v.length < 2){ toast('En az 2 karakterlik bir kimlik girin.'); return; }
+    myUsername = v.slice(0,18);
+    if(!myUserId) myUserId = uid();
+    localStorage.setItem('hpw_uid', myUserId);
+    localStorage.setItem('hpw_uname', myUsername);
+    boot();
+  }
+
+  /* ============================================================
+     BAŞLANGIÇ AKIŞI
+     ============================================================ */
+  function boot(){
+    setSync(false, 'bağlanılıyor...');
+    pullAll().then(function(){
+      if(myArmyId && state.armies[myArmyId] && state.armies[myArmyId].members[myUserId]){
+        enterGame();
+      } else {
+        myArmyId = null;
+        localStorage.removeItem('hpw_army');
+        enterLobby();
+      }
+    });
+  }
+
+  /* ============================================================
+     LOBİ
+     ============================================================ */
+  var selectedLogo = null;
+
+  function enterLobby(){
+    showScreen('screen-lobby');
+    buildLogoPicker();
+    renderArmyList();
+  }
+
+  function buildLogoPicker(){
+    var wrap = document.getElementById('logoPick');
+    wrap.innerHTML = '';
+    LOGOS.forEach(function(l, i){
+      var s = document.createElement('span');
+      s.textContent = l;
+      s.addEventListener('click', function(){
+        wrap.querySelectorAll('span').forEach(function(x){ x.classList.remove('sel'); });
+        s.classList.add('sel');
+        selectedLogo = {logo:l, color: COLORS[i % COLORS.length]};
+      });
+      wrap.appendChild(s);
+    });
+  }
+
+  function renderArmyList(){
+    var list = document.getElementById('armyList');
+    list.innerHTML = '';
+    var ids = Object.keys(state.armies);
+    if(ids.length === 0){
+      list.innerHTML = '<div class="empty-hint">Henüz kurulmuş bir ordu yok. İlk orduyu sen kur ve Mareşal ol!</div>';
+      return;
+    }
+    ids.forEach(function(id){
+      var a = state.armies[id];
+      var memCount = Object.keys(a.members||{}).length;
+      var item = document.createElement('div');
+      item.className = 'army-item';
+      item.innerHTML = '<div class="logo">'+a.logo+'</div>' +
+        '<div class="info"><div class="n">'+escapeHtml(a.name)+'</div><div class="m">'+memCount+' asker</div></div>';
+      var btn = document.createElement('button');
+      btn.className = 'btn small'; btn.textContent = 'Katıl';
+      btn.addEventListener('click', function(){ joinArmy(id); });
+      item.appendChild(btn);
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById('showCreateBtn').addEventListener('click', function(){
+    var f = document.getElementById('createForm');
+    f.style.display = f.style.display==='none' ? 'block' : 'none';
+  });
+
+  document.getElementById('createArmyBtn').addEventListener('click', function(){
+    var name = document.getElementById('armyNameInput').value.trim();
+    if(name.length < 2){ toast('Ordu adı en az 2 karakter olmalı.'); return; }
+    if(!selectedLogo){ toast('Bir logo seç.'); return; }
+    var id = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    var cx = Math.floor(GRID/2), cy = Math.floor(GRID/2);
+    mergeWrite('armies', function(latest){
+      latest[id] = {
+        id: id, name: name.slice(0,20), logo: selectedLogo.logo, color: selectedLogo.color,
+        founderId: myUserId, createdAt: Date.now(),
+        members: (function(){ var m={}; m[myUserId] = {name: myUsername, rank: FOUNDER_RANK}; return m; })()
+      };
+      return latest;
+    }).then(function(){
+      return mergeWrite('tiles', function(latest){
+        latest[cx+','+cy] = id;
+        return latest;
+      });
+    }).then(function(){
+      myArmyId = id;
+      localStorage.setItem('hpw_army', id);
+      toast('Ordu kuruldu! Mareşal oldun.');
+      enterGame();
+    }).catch(function(){ toast('Bir hata oluştu, tekrar dene.'); });
+  });
+
+  function joinArmy(id){
+    mergeWrite('armies', function(latest){
+      if(latest[id]){
+        latest[id].members = latest[id].members || {};
+        if(!latest[id].members[myUserId]){
+          latest[id].members[myUserId] = {name: myUsername, rank: 0};
         }
+      }
+      return latest;
+    }).then(function(){
+      myArmyId = id;
+      localStorage.setItem('hpw_army', id);
+      toast('Orduya katıldın. Rütben: Er');
+      enterGame();
+    });
+  }
 
-        function closePopup() {
-            document.getElementById('mini-popup').style.display = 'none';
+  /* ============================================================
+     OYUN — HARİTA
+     ============================================================ */
+  var viewport, world, img, canvas, ctx;
+  var scale = 1, minScale = 0.3, maxScale = 4;
+  var tx = 0, ty = 0;
+  var CELL = 22; 
+  var mapW, mapH;
+
+  function enterGame(){
+    showScreen('screen-game');
+    viewport = document.getElementById('mapViewport');
+    world = document.getElementById('mapWorld');
+    img = document.getElementById('mapImg');
+    canvas = document.getElementById('gridCanvas');
+    ctx = canvas.getContext('2d');
+
+    function initSize(){
+      mapW = GRID * CELL; mapH = Math.round(mapW * 0.5);
+      img.style.width = mapW + 'px'; img.style.height = mapH + 'px';
+      canvas.width = mapW; canvas.height = mapH;
+      world.style.width = mapW + 'px'; world.style.height = mapH + 'px';
+      centerView();
+      drawGrid();
+    }
+    if(img.complete) initSize(); else img.onload = initSize;
+
+    setupPanZoom();
+    setupClicks();
+    refreshCommandPanel();
+    renderChat();
+
+    if(!window._pollStarted){
+      window._pollStarted = true;
+      setInterval(function(){ pullAll(); }, POLL_MS);
+    }
+  }
+
+  function centerView(){
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    scale = Math.max(vw / mapW, vh / mapH) * 1.15;
+    scale = Math.max(minScale, Math.min(maxScale, scale));
+    tx = (vw - mapW*scale)/2; ty = (vh - mapH*scale)/2;
+    applyTransform();
+  }
+
+  function applyTransform(){
+    world.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+    document.getElementById('zoomLbl').textContent = Math.round(scale*100) + '%';
+  }
+
+  function cellKey(x,y){ return x+','+y; }
+
+  function drawGrid(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var keys = Object.keys(state.tiles);
+    for(var i=0;i<keys.length;i++){
+      var k = keys[i]; var armyId = state.tiles[k];
+      var army = state.armies[armyId];
+      if(!army) continue;
+      var parts = k.split(','); var x = parseInt(parts[0],10), y = parseInt(parts[1],10);
+      ctx.fillStyle = hexAlpha(army.color, 0.55);
+      ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+      ctx.strokeStyle = army.color;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x*CELL+0.75, y*CELL+0.75, CELL-1.5, CELL-1.5);
+      if(CELL >= 14){
+        ctx.font = (CELL*0.62)+'px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(army.logo, x*CELL+CELL/2, y*CELL+CELL/2+1);
+      }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    if(scale > 0.6){
+      for(var gx=0; gx<=GRID; gx+=10){
+        ctx.beginPath(); ctx.moveTo(gx*CELL,0); ctx.lineTo(gx*CELL, GRID*CELL*0.5); ctx.stroke();
+      }
+    }
+  }
+
+  function hexAlpha(hex, a){
+    var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return 'rgba('+r+','+g+','+b+','+a+')';
+  }
+
+  function setupPanZoom(){
+    var dragging = false, lastX, lastY;
+    var pinchDist = null, pinchScale = null;
+
+    viewport.addEventListener('pointerdown', function(e){
+      if(e.target.closest('#gridCanvas') && e.pointerType==='mouse' && e.button!==0) return;
+      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      viewport.setPointerCapture(e.pointerId);
+    });
+    viewport.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      tx += dx; ty += dy;
+      applyTransform();
+    });
+    viewport.addEventListener('pointerup', function(){ dragging = false; });
+    viewport.addEventListener('pointercancel', function(){ dragging = false; });
+
+    viewport.addEventListener('wheel', function(e){
+      e.preventDefault();
+      var delta = e.deltaY > 0 ? -0.1 : 0.1;
+      zoomAt(e.clientX, e.clientY, delta);
+    }, {passive:false});
+
+    viewport.addEventListener('touchstart', function(e){
+      if(e.touches.length===2){
+        dragging = false;
+        pinchDist = touchDist(e.touches);
+        pinchScale = scale;
+      }
+    }, {passive:false});
+    viewport.addEventListener('touchmove', function(e){
+      if(e.touches.length===2){
+        e.preventDefault();
+        var d = touchDist(e.touches);
+        var factor = d / pinchDist;
+        var newScale = Math.max(minScale, Math.min(maxScale, pinchScale*factor));
+        var cx = (e.touches[0].clientX + e.touches[1].clientX)/2;
+        var cy = (e.touches[0].clientY + e.touches[1].clientY)/2;
+        setZoomAbs(cx, cy, newScale);
+      }
+    }, {passive:false});
+
+    function touchDist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+
+    document.getElementById('zoomIn').addEventListener('click', function(){ zoomAtCenter(0.2); });
+    document.getElementById('zoomOut').addEventListener('click', function(){ zoomAtCenter(-0.2); });
+  }
+
+  function zoomAtCenter(delta){
+    var r = viewport.getBoundingClientRect();
+    zoomAt(r.left + r.width/2, r.top + r.height/2, delta);
+  }
+  function zoomAt(clientX, clientY, delta){
+    var newScale = Math.max(minScale, Math.min(maxScale, scale + delta*scale));
+    setZoomAbs(clientX, clientY, newScale);
+  }
+  function setZoomAbs(clientX, clientY, newScale){
+    var r = viewport.getBoundingClientRect();
+    var mx = clientX - r.left, my = clientY - r.top;
+    var wx = (mx - tx)/scale, wy = (my - ty)/scale;
+    scale = newScale;
+    tx = mx - wx*scale; ty = my - wy*scale;
+    applyTransform();
+    drawGrid();
+  }
+
+  function setupClicks(){
+    var startX, startY, moved;
+    viewport.addEventListener('pointerdown', function(e){ startX=e.clientX; startY=e.clientY; moved=false; });
+    viewport.addEventListener('pointermove', function(e){
+      if(Math.abs(e.clientX-startX)>6 || Math.abs(e.clientY-startY)>6) moved = true;
+    });
+    viewport.addEventListener('pointerup', function(e){
+      if(moved) return;
+      handleMapClick(e.clientX, e.clientY);
+    });
+  }
+
+  function handleMapClick(clientX, clientY){
+    closeDip();
+    var r = viewport.getBoundingClientRect();
+    var mx = clientX - r.left, my = clientY - r.top;
+    var wx = (mx - tx)/scale, wy = (my - ty)/scale;
+    var gx = Math.floor(wx / CELL), gy = Math.floor(wy / CELL);
+    if(gx<0||gy<0||gx>=GRID||gy>=GRID) return;
+
+    var key = cellKey(gx,gy);
+    var owner = state.tiles[key];
+
+    if(!owner){
+      claimTile(gx,gy);
+    } else if(owner === myArmyId){
+      return;
+    } else {
+      openDip(owner, clientX, clientY);
+    }
+  }
+
+  function claimTile(x,y){
+    if(!myArmyId){ toast('Önce bir orduya katılmalısın.'); return; }
+    mergeWrite('tiles', function(latest){
+      if(!latest[x+','+y]) latest[x+','+y] = myArmyId;
+      return latest;
+    }).then(function(){
+      drawGrid();
+    });
+  }
+
+  /* ============================================================
+     DİPLOMASİ POPUP
+     ============================================================ */
+  var dipTargetArmyId = null;
+
+  function dipKey(a,b){ var arr=[a,b].sort(); return arr[0]+'|'+arr[1]; }
+
+  function myRank(){
+    if(!myArmyId || !state.armies[myArmyId]) return -1;
+    var m = state.armies[myArmyId].members[myUserId];
+    return m ? m.rank : -1;
+  }
+
+  function openDip(targetArmyId, clientX, clientY){
+    dipTargetArmyId = targetArmyId;
+    var target = state.armies[targetArmyId];
+    if(!target) return;
+    var pop = document.getElementById('dipPopup');
+    document.getElementById('dipName').textContent = target.logo + ' ' + target.name;
+    var dk = dipKey(myArmyId, targetArmyId);
+    var rec = state.diplomacy[dk];
+    var statusTxt = 'Durum: Nötr';
+    if(rec && rec.status === 'war') statusTxt = 'Durum: ⚔ Savaşta';
+    if(rec && rec.status === 'peace') statusTxt = 'Durum: 🕊 Barış';
+    if(rec && rec.status === 'alliance') statusTxt = 'Durum: 🤝 İttifak';
+    if(rec && rec.pending) statusTxt += ' — Teklif bekleniyor (' + rec.pending.type + ')';
+    document.getElementById('dipStatus').textContent = statusTxt;
+
+    var authorized = myArmyId && myArmyId !== targetArmyId && myRank() >= DIPLO_MIN;
+    ['dipWar','dipPeace','dipAlliance'].forEach(function(id){
+      document.getElementById(id).disabled = !authorized;
+      document.getElementById(id).title = authorized ? '' : 'Bu işlem için Genelkurmay Başkanı/Mareşal rütbesi gerekir.';
+    });
+
+    pop.style.left = Math.min(clientX+10, window.innerWidth-210) + 'px';
+    pop.style.top = Math.min(clientY+10, window.innerHeight-220) + 'px';
+    pop.classList.add('open');
+  }
+
+  function closeDip(){ document.getElementById('dipPopup').classList.remove('open'); dipTargetArmyId=null; }
+  document.getElementById('dipClose').addEventListener('click', closeDip);
+
+  function proposeDiplomacy(type){
+    if(!dipTargetArmyId || myRank() < DIPLO_MIN) return;
+    var dk = dipKey(myArmyId, dipTargetArmyId);
+    mergeWrite('diplomacy', function(latest){
+      latest[dk] = latest[dk] || {status:'neutral'};
+      latest[dk].pending = { from: myArmyId, to: dipTargetArmyId, type: type, proposedBy: myUserId, ts: Date.now() };
+      return latest;
+    }).then(function(){
+      toast('Teklif gönderildi: ' + type);
+      closeDip();
+      refreshCommandPanel();
+    });
+  }
+  document.getElementById('dipWar').addEventListener('click', function(){ proposeDiplomacy('Savaş'); });
+  document.getElementById('dipPeace').addEventListener('click', function(){ proposeDiplomacy('Barış'); });
+  document.getElementById('dipAlliance').addEventListener('click', function(){ proposeDiplomacy('İttifak'); });
+
+  function respondDiplomacy(dk, accept){
+    mergeWrite('diplomacy', function(latest){
+      var rec = latest[dk];
+      if(!rec || !rec.pending) return latest;
+      if(accept){
+        var t = rec.pending.type;
+        rec.status = (t==='Savaş') ? 'war' : (t==='Barış') ? 'peace' : 'alliance';
+      }
+      rec.pending = null;
+      return latest;
+    }).then(function(){
+      toast(accept ? 'Teklif kabul edildi.' : 'Teklif reddedildi.');
+      refreshCommandPanel();
+      drawGrid();
+    });
+  }
+
+  /* ============================================================
+     KOMUTA PANELİ
+     ============================================================ */
+  document.getElementById('menuBtn').addEventListener('click', function(){
+    document.getElementById('cmdPanel').classList.add('open');
+    refreshCommandPanel();
+  });
+  document.getElementById('closeCmdBtn').addEventListener('click', function(){
+    document.getElementById('cmdPanel').classList.remove('open');
+  });
+
+  function refreshCommandPanel(){
+    if(!myArmyId || !state.armies[myArmyId]){ return; }
+    var army = state.armies[myArmyId];
+    var me = army.members[myUserId];
+    if(!me) return;
+
+    document.getElementById('cpName').textContent = myUsername;
+    document.getElementById('cpArmy').textContent = army.logo + ' ' + army.name;
+    document.getElementById('cpRank').textContent = RANKS[me.rank];
+
+    var tileCount = Object.keys(state.tiles).filter(function(k){ return state.tiles[k]===myArmyId; }).length;
+    document.getElementById('stMembers').textContent = Object.keys(army.members).length;
+    document.getElementById('stTiles').textContent = tileCount;
+
+    var propSec = document.getElementById('dipPropSec');
+    var propList = document.getElementById('dipPropList');
+    propList.innerHTML = '';
+    var canDiplo = me.rank >= DIPLO_MIN;
+    var pendingKeys = Object.keys(state.diplomacy).filter(function(dk){
+      var r = state.diplomacy[dk];
+      return r.pending && r.pending.to === myArmyId;
+    });
+    if(canDiplo && pendingKeys.length){
+      propSec.style.display = 'block';
+      pendingKeys.forEach(function(dk){
+        var rec = state.diplomacy[dk];
+        var fromArmy = state.armies[rec.pending.from];
+        if(!fromArmy) return;
+        var row = document.createElement('div');
+        row.className = 'prop-row';
+        row.innerHTML = '<b>' + fromArmy.logo + ' ' + escapeHtml(fromArmy.name) + '</b> — ' + rec.pending.type + ' teklif ediyor.';
+        var actions = document.createElement('div'); actions.className = 'actions';
+        var ok = document.createElement('button'); ok.className='btn small'; ok.textContent='Onayla';
+        ok.addEventListener('click', function(){ respondDiplomacy(dk, true); });
+        var no = document.createElement('button'); no.className='btn small secondary'; no.textContent='Reddet';
+        no.addEventListener('click', function(){ respondDiplomacy(dk, false); });
+        actions.appendChild(ok); actions.appendChild(no);
+        row.appendChild(actions);
+        propList.appendChild(row);
+      });
+    } else {
+      propSec.style.display = 'none';
+    }
+
+    var mgmtSec = document.getElementById('mgmtSec');
+    var mgmtList = document.getElementById('memberMgmtList');
+    mgmtList.innerHTML = '';
+    if(me.rank >= MGMT_MIN){
+      mgmtSec.style.display = 'block';
+      Object.keys(army.members).forEach(function(uidKey){
+        if(uidKey === myUserId) return;
+        var mem = army.members[uidKey];
+        var row = document.createElement('div');
+        row.className = 'member-row';
+        var nameSpan = document.createElement('span'); nameSpan.className='mn';
+        nameSpan.textContent = mem.name + ' — ' + RANKS[mem.rank];
+        row.appendChild(nameSpan);
+
+        if(mem.rank < me.rank){
+          var sel = document.createElement('select');
+          for(var r=0; r<me.rank; r++){
+            var opt = document.createElement('option');
+            opt.value = r; opt.textContent = RANKS[r];
+            if(r === mem.rank) opt.selected = true;
+            sel.appendChild(opt);
+          }
+          sel.addEventListener('change', function(uidKey){
+            return function(e){ changeRank(uidKey, parseInt(e.target.value,10)); };
+          }(uidKey));
+          row.appendChild(sel);
+
+          var kick = document.createElement('button');
+          kick.className = 'btn small danger'; kick.textContent = 'İhraç';
+          kick.addEventListener('click', function(uidKey){
+            return function(){ kickMember(uidKey); };
+          }(uidKey));
+          row.appendChild(kick);
         }
+        mgmtList.appendChild(row);
+      });
+      if(Object.keys(army.members).length <= 1){
+        mgmtList.innerHTML = '<div class="empty-hint">Ordunda yönetilecek başka asker yok.</div>';
+      }
+    } else {
+      mgmtSec.style.display = 'none';
+    }
+  }
 
-        function buildGrid() {
-            const area = document.getElementById('canvas-area');
-            area.innerHTML = '';
-            for(let x=0; x<GRID_SIZE; x++) {
-                for(let y=0; y<GRID_SIZE; y++) {
-                    const key = `${x},${y}`;
-                    const div = document.createElement('div');
-                    div.className = 'pixel';
-                    if(mapData[key]) {
-                        div.style.backgroundImage = `url(${mapData[key].logo})`;
-                    }
-                    div.onclick = (e) => handlePixelClick(key, e, div);
-                    area.appendChild(div);
-                }
-            }
-        }
+  function changeRank(targetUid, newRank){
+    mergeWrite('armies', function(latest){
+      var a = latest[myArmyId];
+      if(a && a.members[targetUid] && a.members[targetUid].rank < myRankFromLatest(a)){
+        a.members[targetUid].rank = newRank;
+      }
+      return latest;
+    }).then(function(){ toast('Rütbe güncellendi.'); refreshCommandPanel(); });
+  }
+  function myRankFromLatest(a){
+    var m = a.members[myUserId]; return m ? m.rank : -1;
+  }
 
-        function loginUser() {
-            const name = document.getElementById('username').value.trim();
-            if(!name) return alert("Askeri adını yaz!");
-            currentUser = name;
-            localStorage.setItem('hukuk_user', currentUser);
+  function kickMember(targetUid){
+    mergeWrite('armies', function(latest){
+      var a = latest[myArmyId];
+      if(a && a.members[targetUid]){
+        delete a.members[targetUid];
+      }
+      return latest;
+    }).then(function(){ toast('Asker ordudan ihraç edildi.'); refreshCommandPanel(); });
+  }
 
-            if(!usersData[currentUser]) {
-                usersData[currentUser] = { army: null, rank: "Er" };
-            }
+  /* ============================================================
+     SOHBET
+     ============================================================ */
+  document.getElementById('chatToggle').addEventListener('click', function(){
+    document.getElementById('chatBox').classList.toggle('open');
+    renderChat();
+  });
+  document.getElementById('chatSend').addEventListener('click', sendChat);
+  document.getElementById('chatInput').addEventListener('keydown', function(e){ if(e.key==='Enter') sendChat(); });
 
-            document.getElementById('auth-modal').style.display = 'none';
-            document.getElementById('menu-toggle-btn').style.display = 'block';
-            
-            if(!usersData[currentUser].army) {
-                document.getElementById('lobby-modal').style.display = 'block';
-            } else {
-                updateUI();
-            }
-        }
+  function sendChat(){
+    var input = document.getElementById('chatInput');
+    var text = input.value.trim();
+    if(!text) return;
+    input.value = '';
+    var armyName = (myArmyId && state.armies[myArmyId]) ? state.armies[myArmyId].name : 'Sivil';
+    mergeWrite('chat', function(latest){
+      latest = latest || [];
+      latest.push({ user: myUsername, army: armyName, text: text.slice(0,200), ts: Date.now() });
+      if(latest.length > 60) latest = latest.slice(latest.length-60);
+      return latest;
+    }).then(function(){ renderChat(); });
+  }
 
-        function logoutUser() {
-            localStorage.removeItem('hukuk_user');
-            location.reload();
-        }
+  function renderChat(){
+    var box = document.getElementById('chatMsgs');
+    box.innerHTML = '';
+    (state.chat||[]).forEach(function(m){
+      var d = document.createElement('div');
+      d.className = 'cmsg';
+      d.innerHTML = '<b>' + escapeHtml(m.user) + '</b> <span style="color:#666">[' + escapeHtml(m.army) + ']</span>: ' + escapeHtml(m.text);
+      box.appendChild(d);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
 
-        function createArmy() {
-            const name = document.getElementById('army-name').value.trim();
-            const fileInput = document.getElementById('army-logo-file');
-            if(!name || fileInput.files.length === 0) return alert("Ordu ismi ve logo seçmelisin!");
-            if(armiesData[name]) return alert("Bu isimde ordu zaten var!");
+  /* ============================================================
+     STATE GÜNCELLENDİĞİNDE
+     ============================================================ */
+  function onStateUpdated(){
+    if(document.getElementById('screen-game').classList.contains('active')){
+      if(canvas) drawGrid();
+      refreshCommandPanel();
+      renderChat();
+      if(myArmyId && (!state.armies[myArmyId] || !state.armies[myArmyId].members[myUserId])){
+        myArmyId = null; localStorage.removeItem('hpw_army');
+        toast('Ordundan ihraç edildin.');
+        enterLobby();
+      }
+    } else if(document.getElementById('screen-lobby').classList.contains('active')){
+      renderArmyList();
+    }
+  }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const logo = e.target.result;
-                armiesData[name] = { name: name, logo: logo, marshal: currentUser, diplomacy: {} };
-                usersData[currentUser].army = name;
-                usersData[currentUser].rank = "Mareşal";
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
 
-                let center = `${Math.floor(GRID_SIZE/2)},${Math.floor(GRID_SIZE/2)}`;
-                mapData[center] = { army: name, logo: logo };
+  window.addEventListener('resize', function(){ if(world && canvas) applyTransform(); });
 
-                saveAndRefresh();
-                document.getElementById('lobby-modal').style.display = 'none';
-                alert("Ordu kuruldu, Başkomutan sensin!");
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        }
+  if(myUserId && myUsername){
+    document.getElementById('usernameInput').value = myUsername;
+    boot();
+  }
 
-        function joinArmy(name) {
-            if(usersData[currentUser].army) return alert("Zaten bir ordudasın!");
-            usersData[currentUser].army = name;
-            usersData[currentUser].rank = "Er";
-            saveAndRefresh();
-            document.getElementById('lobby-modal').style.display = 'none';
-        }
-
-        function handlePixelClick(key, e, element) {
-            const userArmy = usersData[currentUser].army;
-            if(!userArmy) return alert("Önce bir orduya katılmalısın!");
-
-            if(mapData[key] && mapData[key].army !== userArmy) {
-                selectedTargetArmy = mapData[key].army;
-                const popup = document.getElementById('mini-popup');
-                document.getElementById('popup-army-name').innerText = selectedTargetArmy;
-                
-                popup.style.left = (element.offsetLeft + 20) + 'px';
-                popup.style.top = (element.offsetTop - 10) + 'px';
-                popup.style.display = 'block';
-                e.stopPropagation();
-                return;
-            }
-
-            closePopup();
-            mapData[key] = { army: userArmy, logo: armiesData[userArmy].logo };
-            saveAndRefresh();
-        }
-
-        function sendDiplomacyAction(action) {
-            const myArmy = usersData[currentUser].army;
-            const uRank = usersData[currentUser].rank;
-
-            if(!highRanks.includes(uRank)) {
-                closePopup();
-                return alert("Sadece Paşalar ve Genelkurmay/Mareşal seviyesi diplomatik işlem başlatabilir!");
-            }
-
-            if(!selectedTargetArmy) return;
-            armiesData[myArmy].diplomacy[selectedTargetArmy] = action;
-            saveAndRefresh();
-            closePopup();
-            alert(selectedTargetArmy + " ordusuna " + action.toUpperCase() + " talebi iletildi!");
-        }
-
-        function kickUser(uname) {
-            if(confirm(uname + " askeri ihraç edilsin mi?")) {
-                usersData[uname].army = null;
-                usersData[uname].rank = "Er";
-                saveAndRefresh();
-            }
-        }
-
-        function changeRank(uname, rank) {
-            usersData[uname].rank = rank;
-            saveAndRefresh();
-        }
-
-        function updateUI() {
-            const u = usersData[currentUser];
-            if(!u) return;
-            document.getElementById('lbl-user').innerText = currentUser;
-            document.getElementById('lbl-army').innerText = u.army || "Yok";
-            document.getElementById('lbl-rank').innerText = u.rank;
-
-            if(u.army && highRanks.includes(u.rank)) {
-                document.getElementById('commander-section').style.display = 'block';
-                renderCommandPanel(u.army);
-            } else {
-                document.getElementById('commander-section').style.display = 'none';
-            }
-
-            renderArmyList();
-        }
-
-        function renderArmyList() {
-            const box = document.getElementById('armies-container');
-            box.innerHTML = '';
-            for(let name in armiesData) {
-                box.innerHTML += `<div style="margin:4px 0; background:#f4f4f4; padding:6px; display:flex; justify-content:space-between; align-items:center; border-radius:4px;">
-                    <span><b>${name}</b></span>
-                    <button onclick="joinArmy('${name}')" style="width:65px; padding:4px; margin:0; font-size:11px;">Katıl</button>
-                </div>`;
-            }
-        }
-
-        function renderCommandPanel(myArmy) {
-            const memBox = document.getElementById('member-management');
-            memBox.innerHTML = "<b>Ordudaki Askerler:</b><br>";
-            for(let uname in usersData) {
-                if(usersData[uname].army === myArmy && uname !== currentUser) {
-                    memBox.innerHTML += `<div style="margin:4px 0; background:#f9f9f9; padding:4px; border-radius:4px; font-size:12px;">
-                        ${uname} (${usersData[uname].rank})
-                        <button onclick="kickUser('${uname}')" style="width:45px; background:darkred; float:right; padding:2px; margin:0; font-size:10px;">İhraç</button>
-                        <select onchange="changeRank('${uname}', this.value)" style="width:90px; float:right; padding:2px; margin:0 4px 0 0; font-size:10px;">
-                            ${TSK_RANKS.map(r => `<option value="${r}" ${usersData[uname].rank === r ? 'selected' : ''}>${r}</option>`).join('')}
-                        </select>
-                    </div><div style="clear:both;"></div>`;
-                }
-            }
-        }
-
-        function saveAndRefresh() {
-            localStorage.setItem('hukuk_users', JSON.stringify(usersData));
-            localStorage.setItem('hukuk_armies', JSON.stringify(armiesData));
-            localStorage.setItem('hukuk_map', JSON.stringify(mapData));
-            updateUI();
-            buildGrid();
-        }
-
-        function autoSync() {
-            usersData = JSON.parse(localStorage.getItem('hukuk_users')) || usersData;
-            armiesData = JSON.parse(localStorage.getItem('hukuk_armies')) || armiesData;
-            mapData = JSON.parse(localStorage.getItem('hukuk_map')) || mapData;
-        }
-    </script>
+})();
+</script>
 </body>
 </html>
