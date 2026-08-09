@@ -25,7 +25,7 @@
         #mini-popup button.close-btn { background: #555; }
 
         /* Ortadaki Modaller (Giriş ve Ordu Kurma) */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 20px; border-radius: 10px; z-index: 600; width: 90%; max-width: 340px; box-shadow: 0 6px 25px rgba(0,0,0,0.4); text-align: center; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border: 2px solid #333; padding: 20px; border-radius: 10px; z-index: 600; width: 90%; max-width: 340px; box-shadow: 0 6px 25px rgba(0,0,0,0.4); text-align: center; display: none; }
         
         input, select, button { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background: #fff; color: #000; }
         .modal button { background: #b22222; color: #fff; font-weight: bold; cursor: pointer; border: none; }
@@ -36,7 +36,6 @@
     <!-- HARİTA GÖRÜNTÜLEYİCİ -->
     <div id="map-viewport">
         <div id="canvas-area"></div>
-        <!-- Toprak Üzeri Mini Diplomasi Kutusu -->
         <div id="mini-popup">
             <b id="popup-army-name" style="font-size:12px; color:#b22222;">Ordu</b>
             <button onclick="sendDiplomacyAction('savas')">Savaş Aç</button>
@@ -64,6 +63,7 @@
             <b style="color:#b22222; font-size:13px;">Paşa / Genelkurmay Yönetimi</b>
             <div id="member-management" style="margin: 8px 0;"></div>
         </div>
+        <button onclick="logoutUser()" style="background:#333; margin-top:10px;">Hesaptan Çık / Sıfırla</button>
     </div>
 
     <!-- GİRİŞ PENCERESİ -->
@@ -74,7 +74,7 @@
     </div>
 
     <!-- ORDU SEÇME / KURMA PENCERESİ -->
-    <div id="lobby-modal" class="modal" style="display:none;">
+    <div id="lobby-modal" class="modal">
         <h3 style="margin-bottom:10px;">Ordu Seç veya Kur</h3>
         <input type="text" id="army-name" placeholder="Ordu İsmi">
         <label style="font-size:11px; text-align:left; display:block; color:#555; margin-top:4px;">Ordu Logosu (Galeriden Seç):</label>
@@ -103,7 +103,13 @@
 
             if(currentUser && usersData[currentUser]) {
                 document.getElementById('username').value = currentUser;
-                loginUser();
+                document.getElementById('menu-toggle-btn').style.display = 'block';
+                if(!usersData[currentUser].army) {
+                    document.getElementById('lobby-modal').style.display = 'block';
+                }
+                updateUI();
+            } else {
+                document.getElementById('auth-modal').style.display = 'block';
             }
             setInterval(autoSync, 1000);
         };
@@ -149,8 +155,14 @@
             
             if(!usersData[currentUser].army) {
                 document.getElementById('lobby-modal').style.display = 'block';
+            } else {
+                updateUI();
             }
-            updateUI();
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('hukuk_user');
+            location.reload();
         }
 
         function createArmy() {
