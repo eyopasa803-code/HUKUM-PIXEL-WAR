@@ -20,8 +20,8 @@
   .screen{position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
     background:radial-gradient(ellipse at center, #171b21 0%, #0b0d10 100%); padding:16px; overflow:hidden;}
   .screen.active{display:flex;}
-  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:28px; width:100%; max-width:420px;
-    box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:28px; width:100%; max-width:440px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5); max-height:92vh; overflow-y:auto; user-select:text; -webkit-user-select:text;}
   .card h1{margin:0 0 4px; font-size:24px; letter-spacing:2px; color:var(--accent); text-align:center;}
   .card .sub{color:var(--muted); text-align:center; font-size:12px; margin-bottom:20px; letter-spacing:1px;}
   input[type=text]{width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--border); background:var(--panel2);
@@ -34,6 +34,12 @@
   .btn.secondary{background:var(--panel2); color:var(--text); border-color:var(--border);}
   .btn.danger{background:linear-gradient(180deg,#c24141,#7a1f1f); border-color:#7a1f1f; color:#fff;}
   .btn.small{width:auto; padding:6px 10px; font-size:12px; margin-top:0;}
+  .btn:disabled{opacity:.5;}
+
+  /* SETUP SCREEN */
+  .setup-box{background:var(--panel2); border:1px dashed var(--accent); border-radius:10px; padding:12px; margin:10px 0; font-size:12px; color:var(--muted); line-height:1.5;}
+  .code-line{background:#000; color:#8fe08f; font-family:monospace; font-size:12px; padding:10px; border-radius:6px; margin:6px 0; word-break:break-all; user-select:text; -webkit-user-select:text;}
+  .setup-step{font-size:13px; margin:10px 0 4px; color:var(--text);}
 
   /* LOBBY */
   #screen-lobby{justify-content:flex-start; padding-top:24px;}
@@ -117,10 +123,10 @@
   #dipPopup button:disabled{opacity:.35; cursor:not-allowed;}
   #dipPopup button.war{border-color:var(--warn);}
   #dipPopup button.peace{border-color:#4a90c2;}
-  #dipPopup button.alliance{border-color:#3a8f4f;}
+  #dipPopup button.alliance{border-color:var(--ok);}
 
   .toast{position:fixed; top:14px; left:50%; transform:translateX(-50%); background:rgba(18,22,28,.96); border:1px solid var(--accent);
-    color:var(--text); padding:10px 16px; border-radius:8px; font-size:13px; z-index:90; opacity:0; transition:opacity .3s; pointer-events:none;}
+    color:var(--text); padding:10px 16px; border-radius:8px; font-size:13px; z-index:90; opacity:0; transition:opacity .3s; pointer-events:none; max-width:88vw; text-align:center;}
   .toast.show{opacity:1;}
 
   #syncBadge{position:fixed; bottom:12px; left:12px; z-index:40; font-size:10px; color:var(--muted); background:rgba(18,22,28,.7);
@@ -134,8 +140,30 @@
 <body>
 <div id="app">
 
+  <!-- SETUP (sadece STORAGE ID'leri henüz ayarlanmamışsa görünür) -->
+  <div class="screen" id="screen-setup">
+    <div class="card">
+      <h1>⚙ İLK KURULUM</h1>
+      <div class="sub">ORTAK DEPO HENÜZ BAĞLANMADI</div>
+      <div class="setup-box">
+        Bu oyun tüm oyuncular arasında veri paylaşmak için ücretsiz bir JSON depolama servisi (jsonstorage.net) kullanır.
+        Devam etmeden önce <b>bir kere</b> ortak bir "depo" oluşturman gerekiyor. Hesap açman gerekmiyor.
+      </div>
+      <button class="btn" id="setupCreateBtn">1) Ortak Depoyu Oluştur</button>
+      <div id="setupResult" style="display:none;">
+        <div class="setup-step">2) Aşağıdaki iki değeri kopyala:</div>
+        <div class="code-line" id="setupUid">-</div>
+        <div class="code-line" id="setupIid">-</div>
+        <div class="setup-step">3) index.html dosyasında şu satırları bul ve bu değerlerle değiştir, sonra GitHub'a tekrar yükle:</div>
+        <div class="code-line">var STORAGE_USER_ID = "...";<br>var STORAGE_ITEM_ID = "...";</div>
+        <div class="setup-box">Şimdilik bu tarayıcıda test etmeye devam edebilirsin (aşağıdaki buton), ama başkaları oyunu görmeden önce dosyayı güncelleyip yeniden yayınlaman gerekir.</div>
+        <button class="btn secondary" id="setupContinueBtn">4) Bu Tarayıcıda Test Et →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- LOGIN -->
-  <div class="screen active" id="screen-login">
+  <div class="screen" id="screen-login">
     <div class="card">
       <h1>⚔ HÜKÜM ⚔</h1>
       <div class="sub">PIXEL WAR — ASKERİ KİMLİK BİLDİRİMİ</div>
@@ -234,10 +262,27 @@
 (function(){
 "use strict";
 
-  // Bucket ismi tamamen sana özel olarak güncellendi:
-  var BUCKET_NAME = "hukum-pixelwar-official-2026-tr";
-  var KV_BASE = "https://kvdb.io/" + BUCKET_NAME + "/";
+/* ============================================================
+   AYARLAR — ORTAK DEPO (backend yok; jsonstorage.net ücretsiz,
+   kayıtsız JSON depolama API'si kullanılıyor).
+   Aşağıdaki iki değeri, oyunu ilk kez açtığında uygulama içindeki
+   "İlk Kurulum" ekranından alacağın ID'lerle değiştir, sonra bu
+   dosyayı tekrar GitHub Pages'e yükle. Değiştirmezsen her ziyaretçi
+   kurulum ekranını görür.
+   ============================================================ */
+  var STORAGE_USER_ID = "DEGISTIR-BENI";
+  var STORAGE_ITEM_ID = "DEGISTIR-BENI";
+  var API_KEY = ""; // opsiyonel — anonim yazma engellenirse app.jsonstorage.net'ten alıp buraya yaz
   var POLL_MS = 3000;
+
+  var RUNTIME_UID = localStorage.getItem('hpw_su') || STORAGE_USER_ID;
+  var RUNTIME_IID = localStorage.getItem('hpw_si') || STORAGE_ITEM_ID;
+
+  function isConfigured(){
+    return RUNTIME_UID && RUNTIME_IID && RUNTIME_UID !== 'DEGISTIR-BENI' && RUNTIME_IID !== 'DEGISTIR-BENI';
+  }
+  function stateUrl(){ return "https://api.jsonstorage.net/v1/json/" + RUNTIME_UID + "/" + RUNTIME_IID; }
+  function withKey(url){ return API_KEY ? (url + "?apiKey=" + encodeURIComponent(API_KEY)) : url; }
 
   /* ---------- RÜTBELER ---------- */
   var RANKS = ["Er","Onbaşı","Çavuş","Teğmen","Üsteğmen","Yüzbaşı","Binbaşı","Yarbay","Albay",
@@ -246,9 +291,9 @@
   var DIPLO_MIN = 13; // Genelkurmay Başkanı ve üzeri: diplomasi
   var FOUNDER_RANK = 14; // Mareşal
 
-  var LOGOS = ["🦅","🐺","🦁","🐉","🛡️","☠️","🔱","🏹","🐍","🦂","🐻","🦈","👑","🔥","⭐","🐗","🦂","🦉","🐲","⚓"];
+  var LOGOS = ["🦅","🐺","🦁","🐉","🛡️","☠️","🔱","🏹","🐍","🦂","🐻","🦈","👑","🔥","⭐","🐗","🦉","🐲","⚓"];
   var COLORS = ["#c0392b","#2980b9","#27ae60","#8e44ad","#d35400","#16a085","#f39c12","#2c3e50",
-    "#c2185b","#00796b","#5d4037","#455a64","#7b1fa2","#0288d1","#558b2f","#e64a19","#546e7a","#ad1457","#00695c","#4527a0"];
+    "#c2185b","#00796b","#5d4037","#455a64","#7b1fa2","#0288d1","#558b2f","#e64a19","#546e7a","#ad1457","#00695c"];
 
   /* ---------- YEREL KULLANICI ---------- */
   function uid(){ return 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
@@ -256,23 +301,29 @@
   var myUsername = localStorage.getItem('hpw_uname');
   var myArmyId = localStorage.getItem('hpw_army') || null;
 
-  /* ---------- OYUN DURUMU (sunucudan gelen) ---------- */
-  var state = { armies:{}, tiles:{}, diplomacy:{}, chat:[] };
-  var GRID = 300; // 300x300 grid
+  /* ---------- OYUN DURUMU ---------- */
+  function defaultState(){ return { armies:{}, tiles:{}, diplomacy:{}, chat:[] }; }
+  var state = defaultState();
+  var GRID = 300;
 
-  /* ---------- YARDIMCI: fetch ile kvdb ---------- */
-  function kvGet(key){
-    return fetch(KV_BASE + key + "?t=" + Date.now(), {cache:"no-store"})
-      .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error('get fail'); return r.text(); })
-      .then(function(txt){ if(!txt) return null; try{ return JSON.parse(txt); }catch(e){ return null; } });
+  /* ---------- jsonstorage.net erişimi ---------- */
+  function kvGetState(){
+    return fetch(stateUrl() + "?t=" + Date.now(), {cache:"no-store"})
+      .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error('get fail'); return r.json(); })
+      .then(function(obj){ return obj || null; })
+      .catch(function(){ return null; });
   }
-  function kvPut(key, obj){
-    return fetch(KV_BASE + key, {method:"PUT", body: JSON.stringify(obj)})
-      .then(function(r){ if(!r.ok) throw new Error('put fail'); return true; });
+  function kvPutState(obj){
+    return fetch(withKey(stateUrl()), {
+      method:"PUT",
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(obj)
+    }).then(function(r){ if(!r.ok) throw new Error('put fail'); return true; });
   }
 
   function setSync(ok, txt){
     var dot = document.getElementById('syncDot');
+    if(!dot) return;
     dot.className = ok ? 'ok' : 'bad';
     document.getElementById('syncTxt').textContent = txt;
   }
@@ -281,38 +332,40 @@
     var t = document.getElementById('toast');
     t.textContent = msg; t.className = 'toast show';
     clearTimeout(t._to);
-    t._to = setTimeout(function(){ t.className = 'toast'; }, 2200);
+    t._to = setTimeout(function(){ t.className = 'toast'; }, 2400);
   }
 
-  /* ---------- SUNUCUDAN TAM DURUM ÇEK ---------- */
   var pulling = false;
   function pullAll(){
-    if(pulling) return Promise.resolve();
+    if(!isConfigured() || pulling) return Promise.resolve();
     pulling = true;
-    return Promise.all([
-      kvGet('armies'), kvGet('tiles'), kvGet('diplomacy'), kvGet('chat')
-    ]).then(function(res){
-      state.armies = res[0] || {};
-      state.tiles = res[1] || {};
-      state.diplomacy = res[2] || {};
-      state.chat = res[3] || [];
+    return kvGetState().then(function(res){
+      state = res || defaultState();
       pulling = false;
       setSync(true, 'senkron (' + new Date().toLocaleTimeString('tr-TR') + ')');
       onStateUpdated();
-    }).catch(function(err){
+    }).catch(function(){
       pulling = false;
       setSync(false, 'bağlantı sorunu — yeniden denenecek');
     });
   }
 
-  function mergeWrite(key, mutateFn){
-    return kvGet(key).then(function(latest){
-      latest = latest || (key==='chat' ? [] : {});
-      var updated = mutateFn(latest);
-      return kvPut(key, updated).then(function(){
-        state[key] = updated;
-        return updated;
+  /* Okuma-değiştirme-yazma: yarış durumunu azaltmak için her yazımdan önce en güncel hali çekilir */
+  function mergeState(mutateFn){
+    return kvGetState().then(function(latest){
+      latest = latest || defaultState();
+      latest.armies = latest.armies || {};
+      latest.tiles = latest.tiles || {};
+      latest.diplomacy = latest.diplomacy || {};
+      latest.chat = latest.chat || [];
+      mutateFn(latest);
+      return kvPutState(latest).then(function(){
+        state = latest;
+        return latest;
       });
+    }).catch(function(err){
+      toast('Sunucuya yazılamadı, tekrar dene.');
+      throw err;
     });
   }
 
@@ -322,6 +375,51 @@
   function showScreen(id){
     document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
     document.getElementById(id).classList.add('active');
+  }
+
+  /* ============================================================
+     İLK KURULUM EKRANI
+     ============================================================ */
+  document.getElementById('setupCreateBtn').addEventListener('click', function(){
+    var btn = document.getElementById('setupCreateBtn');
+    btn.disabled = true; btn.textContent = 'Oluşturuluyor...';
+    fetch("https://api.jsonstorage.net/v1/json", {
+      method:"POST",
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(defaultState())
+    }).then(function(r){
+      if(!r.ok) throw new Error('create fail');
+      return r.json();
+    }).then(function(res){
+      var uri = res.uri || '';
+      var m = uri.split('/v1/json/');
+      var parts = (m[1]||'').split('/');
+      var newUid = parts[0], newIid = parts[1];
+      if(!newUid || !newIid) throw new Error('parse fail');
+      document.getElementById('setupUid').textContent = 'STORAGE_USER_ID: ' + newUid;
+      document.getElementById('setupIid').textContent = 'STORAGE_ITEM_ID: ' + newIid;
+      document.getElementById('setupResult').style.display = 'block';
+      btn.style.display = 'none';
+      document.getElementById('setupContinueBtn').addEventListener('click', function(){
+        localStorage.setItem('hpw_su', newUid);
+        localStorage.setItem('hpw_si', newIid);
+        RUNTIME_UID = newUid; RUNTIME_IID = newIid;
+        toast('Bu tarayıcıda test moduna geçildi.');
+        afterConfigured();
+      });
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = '1) Ortak Depoyu Oluştur';
+      toast('Depo oluşturulamadı, internet bağlantını kontrol edip tekrar dene.');
+    });
+  });
+
+  function afterConfigured(){
+    if(myUserId && myUsername){
+      document.getElementById('usernameInput').value = myUsername;
+      boot();
+    } else {
+      showScreen('screen-login');
+    }
   }
 
   /* ============================================================
@@ -416,41 +514,35 @@
     if(!selectedLogo){ toast('Bir logo seç.'); return; }
     var id = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
     var cx = Math.floor(GRID/2), cy = Math.floor(GRID/2);
-    mergeWrite('armies', function(latest){
-      latest[id] = {
+    mergeState(function(latest){
+      latest.armies[id] = {
         id: id, name: name.slice(0,20), logo: selectedLogo.logo, color: selectedLogo.color,
         founderId: myUserId, createdAt: Date.now(),
         members: (function(){ var m={}; m[myUserId] = {name: myUsername, rank: FOUNDER_RANK}; return m; })()
       };
-      return latest;
-    }).then(function(){
-      return mergeWrite('tiles', function(latest){
-        latest[cx+','+cy] = id;
-        return latest;
-      });
+      latest.tiles[cx+','+cy] = id;
     }).then(function(){
       myArmyId = id;
       localStorage.setItem('hpw_army', id);
       toast('Ordu kuruldu! Mareşal oldun.');
       enterGame();
-    }).catch(function(){ toast('Bir hata oluştu, tekrar dene.'); });
+    }).catch(function(){});
   });
 
   function joinArmy(id){
-    mergeWrite('armies', function(latest){
-      if(latest[id]){
-        latest[id].members = latest[id].members || {};
-        if(!latest[id].members[myUserId]){
-          latest[id].members[myUserId] = {name: myUsername, rank: 0};
+    mergeState(function(latest){
+      if(latest.armies[id]){
+        latest.armies[id].members = latest.armies[id].members || {};
+        if(!latest.armies[id].members[myUserId]){
+          latest.armies[id].members[myUserId] = {name: myUsername, rank: 0};
         }
       }
-      return latest;
     }).then(function(){
       myArmyId = id;
       localStorage.setItem('hpw_army', id);
       toast('Orduya katıldın. Rütben: Er');
       enterGame();
-    });
+    }).catch(function(){});
   }
 
   /* ============================================================
@@ -459,7 +551,7 @@
   var viewport, world, img, canvas, ctx;
   var scale = 1, minScale = 0.3, maxScale = 4;
   var tx = 0, ty = 0;
-  var CELL = 22; 
+  var CELL = 22;
   var mapW, mapH;
 
   function enterGame(){
@@ -539,6 +631,7 @@
     return 'rgba('+r+','+g+','+b+','+a+')';
   }
 
+  /* ---- Pan & Zoom (mouse + touch) ---- */
   function setupPanZoom(){
     var dragging = false, lastX, lastY;
     var pinchDist = null, pinchScale = null;
@@ -607,6 +700,7 @@
     drawGrid();
   }
 
+  /* ---- Tıklama: boş toprağı boya / düşman toprağa diplomasi popup ---- */
   function setupClicks(){
     var startX, startY, moved;
     viewport.addEventListener('pointerdown', function(e){ startX=e.clientX; startY=e.clientY; moved=false; });
@@ -641,12 +735,11 @@
 
   function claimTile(x,y){
     if(!myArmyId){ toast('Önce bir orduya katılmalısın.'); return; }
-    mergeWrite('tiles', function(latest){
-      if(!latest[x+','+y]) latest[x+','+y] = myArmyId;
-      return latest;
+    mergeState(function(latest){
+      if(!latest.tiles[x+','+y]) latest.tiles[x+','+y] = myArmyId;
     }).then(function(){
       drawGrid();
-    });
+    }).catch(function(){});
   }
 
   /* ============================================================
@@ -694,35 +787,33 @@
   function proposeDiplomacy(type){
     if(!dipTargetArmyId || myRank() < DIPLO_MIN) return;
     var dk = dipKey(myArmyId, dipTargetArmyId);
-    mergeWrite('diplomacy', function(latest){
-      latest[dk] = latest[dk] || {status:'neutral'};
-      latest[dk].pending = { from: myArmyId, to: dipTargetArmyId, type: type, proposedBy: myUserId, ts: Date.now() };
-      return latest;
+    mergeState(function(latest){
+      latest.diplomacy[dk] = latest.diplomacy[dk] || {status:'neutral'};
+      latest.diplomacy[dk].pending = { from: myArmyId, to: dipTargetArmyId, type: type, proposedBy: myUserId, ts: Date.now() };
     }).then(function(){
       toast('Teklif gönderildi: ' + type);
       closeDip();
       refreshCommandPanel();
-    });
+    }).catch(function(){});
   }
   document.getElementById('dipWar').addEventListener('click', function(){ proposeDiplomacy('Savaş'); });
   document.getElementById('dipPeace').addEventListener('click', function(){ proposeDiplomacy('Barış'); });
   document.getElementById('dipAlliance').addEventListener('click', function(){ proposeDiplomacy('İttifak'); });
 
   function respondDiplomacy(dk, accept){
-    mergeWrite('diplomacy', function(latest){
-      var rec = latest[dk];
-      if(!rec || !rec.pending) return latest;
+    mergeState(function(latest){
+      var rec = latest.diplomacy[dk];
+      if(!rec || !rec.pending) return;
       if(accept){
         var t = rec.pending.type;
         rec.status = (t==='Savaş') ? 'war' : (t==='Barış') ? 'peace' : 'alliance';
       }
       rec.pending = null;
-      return latest;
     }).then(function(){
       toast(accept ? 'Teklif kabul edildi.' : 'Teklif reddedildi.');
       refreshCommandPanel();
       drawGrid();
-    });
+    }).catch(function(){});
   }
 
   /* ============================================================
@@ -825,26 +916,22 @@
   }
 
   function changeRank(targetUid, newRank){
-    mergeWrite('armies', function(latest){
-      var a = latest[myArmyId];
-      if(a && a.members[targetUid] && a.members[targetUid].rank < myRankFromLatest(a)){
+    mergeState(function(latest){
+      var a = latest.armies[myArmyId];
+      var meNow = a ? a.members[myUserId] : null;
+      if(a && meNow && a.members[targetUid] && a.members[targetUid].rank < meNow.rank){
         a.members[targetUid].rank = newRank;
       }
-      return latest;
-    }).then(function(){ toast('Rütbe güncellendi.'); refreshCommandPanel(); });
-  }
-  function myRankFromLatest(a){
-    var m = a.members[myUserId]; return m ? m.rank : -1;
+    }).then(function(){ toast('Rütbe güncellendi.'); refreshCommandPanel(); }).catch(function(){});
   }
 
   function kickMember(targetUid){
-    mergeWrite('armies', function(latest){
-      var a = latest[myArmyId];
+    mergeState(function(latest){
+      var a = latest.armies[myArmyId];
       if(a && a.members[targetUid]){
         delete a.members[targetUid];
       }
-      return latest;
-    }).then(function(){ toast('Asker ordudan ihraç edildi.'); refreshCommandPanel(); });
+    }).then(function(){ toast('Asker ordudan ihraç edildi.'); refreshCommandPanel(); }).catch(function(){});
   }
 
   /* ============================================================
@@ -863,12 +950,10 @@
     if(!text) return;
     input.value = '';
     var armyName = (myArmyId && state.armies[myArmyId]) ? state.armies[myArmyId].name : 'Sivil';
-    mergeWrite('chat', function(latest){
-      latest = latest || [];
-      latest.push({ user: myUsername, army: armyName, text: text.slice(0,200), ts: Date.now() });
-      if(latest.length > 60) latest = latest.slice(latest.length-60);
-      return latest;
-    }).then(function(){ renderChat(); });
+    mergeState(function(latest){
+      latest.chat.push({ user: myUsername, army: armyName, text: text.slice(0,200), ts: Date.now() });
+      if(latest.chat.length > 60) latest.chat = latest.chat.slice(latest.chat.length-60);
+    }).then(function(){ renderChat(); }).catch(function(){});
   }
 
   function renderChat(){
@@ -909,9 +994,17 @@
 
   window.addEventListener('resize', function(){ if(world && canvas) applyTransform(); });
 
-  if(myUserId && myUsername){
+  /* ============================================================
+     BAŞLAT
+     ============================================================ */
+  if(!isConfigured()){
+    showScreen('screen-setup');
+  } else if(myUserId && myUsername){
     document.getElementById('usernameInput').value = myUsername;
+    showScreen('screen-login');
     boot();
+  } else {
+    showScreen('screen-login');
   }
 
 })();
